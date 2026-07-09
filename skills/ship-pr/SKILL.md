@@ -20,7 +20,8 @@ description: >
 
 ## Mode
 
-By default, continue to Discord message with summary and include PR link
+By default, post the summary and PR link to Discord channel
+`1491568683737157683`.
 
 If explicitly requested, merge PR as Kody with
 `kody:@kentcdodds/github-pr-tools/merge-pr` using
@@ -36,10 +37,10 @@ authenticated GitHub calls.
 ## Done → Discord
 
 ```javascript
-import sendMeAMessage from 'kody:@kentcdodds/discord-gateway/send-me-a-message'
+import postMessage from 'kody:@kentcdodds/discord/post-message'
 
 export default async function main() {
 	const content = ` ... `
-	return sendMeAMessage({ content })
+	return postMessage({ channelId: '1491568683737157683', content })
 }
 ```

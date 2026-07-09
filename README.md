@@ -1,7 +1,14 @@
 # KCD Skills
 
-Agent skills from [Kody](https://github.com/kentcdodds/kody), shared directly
-from GitHub.
+Kent C. Dodds's personal agent skills from
+[Kody](https://github.com/kentcdodds/kody), shared directly from GitHub.
+
+These skills are specific to Kent's tools, accounts, and workflows. They are
+not intended to be generic or work for everyone as-is—the `ship-pr` skill, for
+example, posts to Kent's Discord channel through his private Kody packages.
+
+You are welcome to fork this repository, use it as inspiration, or install and
+modify the skills for your own workflows.
 
 ## Install
 
