@@ -1,0 +1,31 @@
+{
+  "name": "kcd-skills",
+  "version": "1.0.0",
+  "description": "Kent C. Dodds's personal agent skills, shared directly from GitHub.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "format": "oxfmt",
+    "format:check": "oxfmt --check",
+    "prepare": "husky"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kentcdodds/kcd-skills.git"
+  },
+  "author": "Kent C. Dodds <me@kentcdodds.com> (https://kentcdodds.com/)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/kentcdodds/kcd-skills/issues"
+  },
+  "homepage": "https://github.com/kentcdodds/kcd-skills#readme",
+  "lint-staged": {
+    "*": "oxfmt --no-error-on-unmatched-pattern"
+  },
+  "devDependencies": {
+    "@epic-web/config": "^3.2.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.0.8",
+    "oxfmt": "^0.58.0"
+  }
+}
