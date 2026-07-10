@@ -9,7 +9,7 @@ description: >
 
 ## Loop
 
-1. Mark ready — `kody:@kentcdodds/github-pr-tools/set-pr-review-status` with
+1. Mark ready — `kody:@kentcdodds/github/pr/set-review-status` with
    `{ prUrl, status: 'ready' }`, or `{ owner, repo, prNumber, status: 'ready' }`
 2. Wait for CI — `gh pr checks` (compose `loop-on-ci`, `fix-ci`)
 3. Fix failures; address valid AI-reviewer feedback (ignore insignificant nits /
@@ -21,14 +21,14 @@ description: >
 ## Merge and Deploy if requested or the change is low risk
 
 Squash and merge PR as Kody with
-`kody:@kentcdodds/github/merge-pr` using
+`kody:@kentcdodds/github/pr/merge` using
 `{ prUrl, mergeMethod: 'squash' }` (or `{ owner, repo, prNumber, ... }`;
 optional `commitTitle`), watch CI deploy. Relevant links for the discord message
 include: agent, PR, CI job, and relevant deployment page(s).
 
-Other useful exports on the same package: `get-pr-checks` for check-run status
-without `gh`, and `github-client` (`ghRestFetch` / `ghGraphQL`) for one-off
-authenticated GitHub calls.
+Other useful exports on the same package: `pr/get-checks` for check-run status
+without `gh`, and `request` / `graphql` (`kody:@kentcdodds/github/request`,
+`kody:@kentcdodds/github/graphql`) for one-off authenticated GitHub calls.
 
 ## Done → Discord
 
