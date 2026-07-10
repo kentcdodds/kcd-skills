@@ -18,17 +18,13 @@ description: >
 4. Green and no valid feedback left → break
 5. Push → repeat
 
-## Mode
+## Merge and Deploy if requested or the change is low risk
 
-By default, post the summary and PR link to Discord channel
-`1491568683737157683`.
-
-If explicitly requested, merge PR as Kody with
-`kody:@kentcdodds/github-pr-tools/merge-pr` using
+Squash and merge PR as Kody with
+`kody:@kentcdodds/github/merge-pr` using
 `{ prUrl, mergeMethod: 'squash' }` (or `{ owner, repo, prNumber, ... }`;
-optional `commitTitle`), watch CI deploy, when finished, continue to the discord
-message and include a summary with link to PR, deployed URL link, or failing job
-link.
+optional `commitTitle`), watch CI deploy. Relevant links for the discord message
+include: agent, PR, CI job, and relevant deployment page(s).
 
 Other useful exports on the same package: `get-pr-checks` for check-run status
 without `gh`, and `github-client` (`ghRestFetch` / `ghGraphQL`) for one-off
@@ -36,11 +32,14 @@ authenticated GitHub calls.
 
 ## Done → Discord
 
+When finished (whether merged or not), send a discord summary with relevant links.
+
 ```javascript
 import postMessage from 'kody:@kentcdodds/discord/post-message'
 
 export default async function main() {
 	const content = ` ... `
-	return postMessage({ channelId: '1491568683737157683', content })
+	const shipPrChannelId = '1491568683737157683'
+	return postMessage({ channelId: shipPrChannelId, content })
 }
 ```
