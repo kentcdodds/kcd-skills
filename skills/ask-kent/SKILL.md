@@ -24,8 +24,8 @@ Everything else is a close call or a skip.
 
 This is a **hand-written map of this repo**. Do not scan `skills/`, do not route
 over repo-local skills (Kody's `conduct`, `remix`, …), and do not route over
-another author's skills. Cursor's `/orchestrate` plugin is a different skill
-from `/orchistrate` here.
+another author's skills. Cursor's cloud-agent `/orchestrate` plugin is a
+different skill from this repo's `/orchestrate`.
 
 If they already know the skill, tell them to invoke it. `/ask-kent` has nothing
 useful to add.
@@ -37,7 +37,7 @@ The route most work travels.
 ```mermaid
 flowchart TD
 	sit[Situation] --> big{Large or parallel?}
-	big -->|yes| orch["/orchistrate"]
+	big -->|yes| orch["/orchestrate"]
 	big -->|no| plan{Non-trivial system change?}
 	orch --> plan
 	plan -->|yes| vplan["/visual-recap plan"]
@@ -50,7 +50,7 @@ flowchart TD
 ```
 
 1. **Branch: is this large, multi-stream, or too much for one agent?**
-   - **Yes** → **`/orchistrate`**. Two modes: **be** the orchestrator (plan,
+   - **Yes** → **`/orchestrate`**. Two modes: **be** the orchestrator (plan,
      delegate, review, integrate), or **spawn** one if you are a cheap/fast
      model. Frontier model orchestrates; cheap/fast models implement. You do the
      QA — never declare done from sub-agent reports.
@@ -65,7 +65,7 @@ flowchart TD
      so.
    - **No** → skip. A tiny, obvious diff reviews faster as a plain diff.
 
-3. **Build.** `/orchistrate` delegates this. A small change you just do.
+3. **Build.** `/orchestrate` delegates this. A small change you just do.
 
 4. **PR exists** → **`/visual-recap` in recap mode**. Reads
    `git diff <base>...HEAD`, not memory. Replaces a plan-mode block. Re-run
@@ -77,15 +77,15 @@ flowchart TD
    Discord-summarize via `kody:@kentcdodds/discord/send-shipped-pr` — never raw
    `post-message`, never guess token cost.
 
-Keep plan → recap → ship in the repo that owns the PR. `/orchistrate` is the
+Keep plan → recap → ship in the repo that owns the PR. `/orchestrate` is the
 parent session; implementer context is disposable.
 
 ## Situation → route
 
 | Your situation                                 | Type this                                     | Not this                                 |
 | ---------------------------------------------- | --------------------------------------------- | ---------------------------------------- |
-| Idea is big, parallel, or multi-stream         | `/orchistrate`                                | Building it all yourself                 |
-| You are a cheap/fast model handed a large task | `/orchistrate` (spawn a smarter orchestrator) | Doing the bulk coding                    |
+| Idea is big, parallel, or multi-stream         | `/orchestrate`                                | Building it all yourself                 |
+| You are a cheap/fast model handed a large task | `/orchestrate` (spawn a smarter orchestrator) | Doing the bulk coding                    |
 | Planning a non-trivial change                  | `/visual-recap` (plan)                        | Recap mode — the work does not exist yet |
 | PR needs a system-level summary                | `/visual-recap` (recap)                       | Plan mode — read the diff                |
 | Tiny, obvious diff                             | skip `visual-recap`                           | A recap nobody will open                 |
@@ -98,13 +98,13 @@ parent session; implementer context is disposable.
 
 The useful part of this map. One concrete test each.
 
-- **`/orchistrate` vs just build.** Can one agent finish the critical path in
+- **`/orchestrate` vs just build.** Can one agent finish the critical path in
   this window without file conflicts? If yes, build. Fan out only when
   independent workstreams clearly beat one implementer.
-- **`/orchistrate` vs Cursor `/orchestrate`.** This repo's skill is
-  **`/orchistrate`** (the extra `r`): sub-agents in one environment, model
-  split, you QA. Cursor's plugin fans work across cloud agents via its own SDK.
-  This map only names `/orchistrate`.
+- **This `/orchestrate` vs Cursor's plugin.** Same slash name, different job.
+  This skill keeps sub-agents in one environment, splits models, and has you QA.
+  Cursor's plugin fans work across cloud agents via its own SDK. This map only
+  names this repo's skill.
 - **`visual-recap` plan vs recap.** Does the work exist? Plan describes the
   intended change. Recap describes the diff. Never recap from session memory.
 - **`visual-recap` vs skip.** Would a reviewer benefit from a system map
@@ -117,7 +117,7 @@ The useful part of this map. One concrete test each.
 
 The router names skills; it does not install them.
 `npx skills add kentcdodds/kcd-skills` (or `--skill <name>`). Skills with
-`disable-model-invocation: true` (`ask-kent`, `orchistrate`) still exist — type
+`disable-model-invocation: true` (`ask-kent`, `orchestrate`) still exist — type
 the slash command anyway.
 
 - **`/visual-recap`** needs `docs/contributing/architecture/primitives.yaml` in
@@ -125,7 +125,7 @@ the slash command anyway.
 - **`/ship-pr`** needs `gh` auth and Kent's Kody packages
   (`kody:@kentcdodds/github`, `kody:@kentcdodds/discord`). The Discord step is
   Kent-specific.
-- **`/orchistrate`** needs a harness that can spawn sub-agents.
+- **`/orchestrate`** needs a harness that can spawn sub-agents.
 
 ## It's working if
 
