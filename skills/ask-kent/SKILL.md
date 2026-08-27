@@ -134,4 +134,4 @@ the slash command anyway.
 - Close skills get one concrete test for why the other is wrong.
 - Any load-bearing claim about another skill shows up as a read of that
   `SKILL.md`.
-- You recognise your situation, not the nearest generic scenario.
+- You recognize your situation, not the nearest generic scenario.
