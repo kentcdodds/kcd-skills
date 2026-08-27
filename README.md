@@ -12,7 +12,7 @@ modify the skills for your own workflows.
 
 ## Install
 
-Install both skills:
+Install every skill:
 
 ```sh
 npx skills add kentcdodds/kcd-skills
@@ -21,6 +21,8 @@ npx skills add kentcdodds/kcd-skills
 Or install one:
 
 ```sh
+npx skills add kentcdodds/kcd-skills --skill ask-kent
+npx skills add kentcdodds/kcd-skills --skill orchestrate
 npx skills add kentcdodds/kcd-skills --skill visual-recap
 npx skills add kentcdodds/kcd-skills --skill ship-pr
 ```
@@ -29,6 +31,10 @@ Add `--global` to make the skills available across projects.
 
 ## Skills
 
+- `ask-kent` is the router: describe the situation, get the next `/skill` to
+  type. It recommends and stops.
+- `orchestrate` coordinates sub-agents for large tasks (plan, delegate, review,
+  integrate). Not Cursor's cloud-agent `/orchestrate` plugin.
 - `visual-recap` creates and maintains a visual system recap in a pull request.
 - `ship-pr` iterates on CI and review feedback until a pull request is ready.
 

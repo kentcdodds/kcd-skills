@@ -1,5 +1,5 @@
 ---
-name: orchistrate
+name: orchestrate
 description: >
   Orchestrate sub-agents for large tasks: plan, delegate coding to cheap/fast
   models, parallelize the critical path, layer reviews, and close every loop
@@ -8,7 +8,7 @@ description: >
 disable-model-invocation: true
 ---
 
-# Orchistrate
+# Orchestrate
 
 Two modes. Pick one:
 
