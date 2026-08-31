@@ -7,6 +7,17 @@ description: >
 
 # Ship PR
 
+## AI reviewers
+
+Prefer Cursor Bugbot. Never comment `bugbot run` or `cursor review` yourself
+(kody-bot cannot trigger BugBot). Trigger with `kody:@kentcdodds/bugbot` using
+`{ prUrl }` or `{ owner, repo, prNumber }`. Do not pass a GitHub account.
+
+```javascript
+import triggerBugbot from 'kody:@kentcdodds/bugbot'
+await triggerBugbot({ prUrl })
+```
+
 ## Loop
 
 1. Mark ready — `kody:@kentcdodds/github/pr/set-review-status` with
