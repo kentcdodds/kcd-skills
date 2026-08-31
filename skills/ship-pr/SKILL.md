@@ -7,6 +7,17 @@ description: >
 
 # Ship PR
 
+## AI reviewers
+
+Prefer Cursor Bugbot. Never comment `bugbot run` or `cursor review` yourself
+(kody-bot cannot trigger BugBot). Trigger with `kody:@kentcdodds/bugbot` using
+`{ prUrl }` or `{ owner, repo, prNumber }`. Do not pass a GitHub account.
+
+```javascript
+import triggerBugbot from 'kody:@kentcdodds/bugbot'
+await triggerBugbot({ prUrl })
+```
+
 ## Loop
 
 1. Mark ready — `kody:@kentcdodds/github/pr/set-review-status` with
@@ -37,8 +48,10 @@ use raw `post-message` and do **not** compute or guess token cost — the export
 fetches the billed Cursor Cloud Agent usage and formats the cost line.
 
 **agentId (required):**
-- In a Cursor Cloud Agent VM, read it from the metadata socket:
-  curl -fsS --unix-socket "${CURSOR_AGENT_SOCKET:-/run/cursor/api.sock}" http://cursor-agent/v1/meta-data/agent/id
+
+- In a Cursor Cloud Agent VM, read it from the metadata socket: curl -fsS
+  --unix-socket "${CURSOR_AGENT_SOCKET:-/run/cursor/api.sock}"
+  http://cursor-agent/v1/meta-data/agent/id
 - Otherwise pass the `bc-` id from the agent URL you were launched as
   (https://cursor.com/agents/{id}).
 
