@@ -55,13 +55,22 @@ fetches the billed Cursor Cloud Agent usage and formats the cost line.
 - Otherwise pass the `bc-` id from the agent URL you were launched as
   (https://cursor.com/agents/{id}).
 
+**title:** a human headline of the change, not `ship owner/repo#N` (repo and PR
+already have links). Example:
+`OpenAPI spec fetches now count against daily quota`.
+
+**difficulty (always set):** `'Easy' | 'Medium' | 'Hard'`. Distinct from merge
+risk. Easy = small/localized; Medium = several files or real behavior change;
+Hard = architecture, migrations, subtle correctness, or wide blast radius.
+
 ```javascript
 import sendShippedPr from 'kody:@kentcdodds/discord/send-shipped-pr'
 
 export default async function main() {
 	return sendShippedPr({
 		agentId, // bc- id from the metadata socket or launch URL
-		title: 'PR title',
+		title: 'OpenAPI spec fetches now count against daily quota',
+		difficulty: 'Easy', // or 'Medium' | 'Hard'
 		summary: 'What shipped / parked / blocked and why.',
 		prUrl: 'https://github.com/owner/repo/pull/1',
 		repo: 'owner/repo',
