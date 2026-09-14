@@ -36,7 +36,9 @@ The route most work travels.
 
 ```mermaid
 flowchart TD
-	sit[Situation] --> big{Large or parallel?}
+	sit[Situation] --> decide{Need options first?}
+	decide -->|yes| rnr["/review-and-recommend"]
+	decide -->|no| big{Large or parallel?}
 	big -->|yes| orch["/orchestrate"]
 	big -->|no| plan{Non-trivial system change?}
 	orch --> plan
@@ -48,6 +50,9 @@ flowchart TD
 	recap -->|no| ship["/ship-pr"]
 	vrecap --> ship
 ```
+
+**Decision-shaped ask?** Need evidence-backed options before implementing →
+**`/review-and-recommend`**. It stops and waits.
 
 1. **Branch: is this large, multi-stream, or too much for one agent?**
    - **Yes** → **`/orchestrate`**. Two modes: **be** the orchestrator (plan,
@@ -84,6 +89,7 @@ parent session; implementer context is disposable.
 
 | Your situation                                 | Type this                                     | Not this                                 |
 | ---------------------------------------------- | --------------------------------------------- | ---------------------------------------- |
+| Decision-shaped ask before implementing        | `/review-and-recommend`                       | Jumping to build or `/visual-recap`      |
 | Idea is big, parallel, or multi-stream         | `/orchestrate`                                | Building it all yourself                 |
 | You are a cheap/fast model handed a large task | `/orchestrate` (spawn a smarter orchestrator) | Doing the bulk coding                    |
 | Planning a non-trivial change                  | `/visual-recap` (plan)                        | Recap mode — the work does not exist yet |
@@ -98,6 +104,8 @@ parent session; implementer context is disposable.
 
 The useful part of this map. One concrete test each.
 
+- **`/review-and-recommend` vs just build.** Does a human need to pick among
+  real options first? If yes, review and wait. If the path is obvious, build.
 - **`/orchestrate` vs just build.** Can one agent finish the critical path in
   this window without file conflicts? If yes, build. Fan out only when
   independent workstreams clearly beat one implementer.
