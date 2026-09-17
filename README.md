@@ -22,6 +22,7 @@ Or install one:
 
 ```sh
 npx skills add kentcdodds/kcd-skills --skill ask-kent
+npx skills add kentcdodds/kcd-skills --skill review-and-recommend
 npx skills add kentcdodds/kcd-skills --skill orchestrate
 npx skills add kentcdodds/kcd-skills --skill visual-recap
 npx skills add kentcdodds/kcd-skills --skill ship-pr
@@ -33,6 +34,8 @@ Add `--global` to make the skills available across projects.
 
 - `ask-kent` is the router: describe the situation, get the next `/skill` to
   type. It recommends and stops.
+- `review-and-recommend` presents decision options with effort, then recommends
+  one path and names the right fix.
 - `orchestrate` coordinates sub-agents for large tasks (plan, delegate, review,
   integrate). Not Cursor's cloud-agent `/orchestrate` plugin.
 - `visual-recap` creates and maintains a visual system recap in a pull request.
