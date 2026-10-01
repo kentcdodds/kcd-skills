@@ -7,9 +7,10 @@ description: >
 
 # Ship PR
 
-Run the Kody snippets below with **CLI local execute** when Node ≥ 22 and a
-`KODY_API_TOKEN` (scope `local-execute` plus what the call needs) are available
-— see `/prefer-local-kody-execute`. Hosted MCP `execute` is the fallback.
+Run the Kody snippets below with **CLI local execute** when Node ≥ 22 is
+available — auth via provisioned `KODY_API_TOKEN` (Cloud Agents / CI) or
+`kody login` (interactive); see `/prefer-local-kody-execute`. Hosted MCP
+`execute` is the fallback.
 
 ## AI reviewers
 
@@ -68,7 +69,7 @@ risk. Easy = small/localized; Medium = several files or real behavior change;
 Hard = architecture, migrations, subtle correctness, or wide blast radius.
 
 ```bash
-npx @kodycodes/cli execute --local --token "$KODY_API_TOKEN" --code '
+npx @kodycodes/cli execute --local --code '
 import sendShippedPr from "kody:@kentcdodds/discord/send-shipped-pr"
 
 export default async function main() {
