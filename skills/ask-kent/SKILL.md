@@ -122,7 +122,7 @@ The useful part of this map. One concrete test each.
   summary? That's `/ship-pr`. Merge is a branch inside it, not a different
   skill.
 - **`/prefer-local-kody-execute` vs hosted MCP `execute`.** Shell + Node ≥ 22 +
-  token (or mintable via MCP `api`)? Prefer CLI `--local`. Hosted is fallback
+  `kody login` or `KODY_API_TOKEN`? Prefer CLI `--local`. Hosted is fallback
   when local is inappropriate.
 
 ## Preconditions
@@ -138,9 +138,9 @@ the slash command anyway.
   (`kody:@kentcdodds/github`, `kody:@kentcdodds/discord`). The Discord step is
   Kent-specific. Prefer CLI local execute for those calls (see
   `/prefer-local-kody-execute`).
-- **`/prefer-local-kody-execute`** needs Node ≥ 22, `@kodycodes/cli`, and
-  `KODY_API_TOKEN` (or MCP `api` to mint one). Feature flags: `mcp-api-tool` +
-  `local-execute`.
+- **`/prefer-local-kody-execute`** needs Node ≥ 22, `@kodycodes/cli`, and auth
+  via `kody login` (interactive) or `KODY_API_TOKEN` (CI / Cloud Agents).
+  Feature flags: `mcp-api-tool` + `local-execute`.
 - **`/orchestrate`** needs a harness that can spawn sub-agents.
 
 ## It's working if
