@@ -96,6 +96,7 @@ parent session; implementer context is disposable.
 | PR needs a system-level summary                | `/visual-recap` (recap)                       | Plan mode — read the diff                |
 | Tiny, obvious diff                             | skip `visual-recap`                           | A recap nobody will open                 |
 | CI, review, merge, Discord summary             | `/ship-pr`                                    | Re-explaining the babysit loop           |
+| Need to run Kody execute / call Kody packages  | `/prefer-local-kody-execute`                  | Hosted MCP `execute` as the default      |
 | Already know the skill                         | that skill                                    | `/ask-kent`                              |
 | Working repo has no `primitives.yaml`          | say so; don't fake a recap                    | Inventing primitive ids                  |
 | Not Kent / no Kody Discord exports             | fork `ship-pr` or skip Discord                | Pretending the Discord step will work    |
@@ -120,6 +121,9 @@ The useful part of this map. One concrete test each.
 - **`ship-pr` vs "just merge it".** Need the CI/review loop and the Discord
   summary? That's `/ship-pr`. Merge is a branch inside it, not a different
   skill.
+- **`/prefer-local-kody-execute` vs hosted MCP `execute`.** Shell + Node ≥ 22 +
+  token (or mintable via MCP `api`)? Prefer CLI `--local`. Hosted is fallback
+  when local is inappropriate.
 
 ## Preconditions
 
@@ -132,7 +136,11 @@ the slash command anyway.
   the working repo, plus `gh` auth to upsert the PR block.
 - **`/ship-pr`** needs `gh` auth and Kent's Kody packages
   (`kody:@kentcdodds/github`, `kody:@kentcdodds/discord`). The Discord step is
-  Kent-specific.
+  Kent-specific. Prefer CLI local execute for those calls (see
+  `/prefer-local-kody-execute`).
+- **`/prefer-local-kody-execute`** needs Node ≥ 22, `@kodycodes/cli`, and
+  `KODY_API_TOKEN` (or MCP `api` to mint one). Feature flags: `mcp-api-tool` +
+  `local-execute`.
 - **`/orchestrate`** needs a harness that can spawn sub-agents.
 
 ## It's working if

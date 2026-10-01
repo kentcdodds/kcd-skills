@@ -7,6 +7,10 @@ description: >
 
 # Ship PR
 
+Run the Kody snippets below with **CLI local execute** when Node ≥ 22 and a
+`KODY_API_TOKEN` (scope `local-execute` plus what the call needs) are available
+— see `/prefer-local-kody-execute`. Hosted MCP `execute` is the fallback.
+
 ## AI reviewers
 
 Prefer Cursor Bugbot. Never comment `bugbot run` or `cursor review` yourself
@@ -63,19 +67,21 @@ already have links). Example:
 risk. Easy = small/localized; Medium = several files or real behavior change;
 Hard = architecture, migrations, subtle correctness, or wide blast radius.
 
-```javascript
-import sendShippedPr from 'kody:@kentcdodds/discord/send-shipped-pr'
+```bash
+npx @kodycodes/cli execute --local --token "$KODY_API_TOKEN" --code '
+import sendShippedPr from "kody:@kentcdodds/discord/send-shipped-pr"
 
 export default async function main() {
 	return sendShippedPr({
 		agentId, // bc- id from the metadata socket or launch URL
-		title: 'OpenAPI spec fetches now count against daily quota',
-		difficulty: 'Easy', // or 'Medium' | 'Hard'
-		summary: 'What shipped / parked / blocked and why.',
-		prUrl: 'https://github.com/owner/repo/pull/1',
-		repo: 'owner/repo',
-		extras: ['CI green', 'preview verified'],
-		status: 'Shipped', // or 'Parked' | 'Blocked'
+		title: "OpenAPI spec fetches now count against daily quota",
+		difficulty: "Easy", // or "Medium" | "Hard"
+		summary: "What shipped / parked / blocked and why.",
+		prUrl: "https://github.com/owner/repo/pull/1",
+		repo: "owner/repo",
+		extras: ["CI green", "preview verified"],
+		status: "Shipped", // or "Parked" | "Blocked"
 	})
 }
+'
 ```

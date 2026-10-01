@@ -26,6 +26,7 @@ npx skills add kentcdodds/kcd-skills --skill review-and-recommend
 npx skills add kentcdodds/kcd-skills --skill orchestrate
 npx skills add kentcdodds/kcd-skills --skill visual-recap
 npx skills add kentcdodds/kcd-skills --skill ship-pr
+npx skills add kentcdodds/kcd-skills --skill prefer-local-kody-execute
 ```
 
 Add `--global` to make the skills available across projects.
@@ -40,6 +41,8 @@ Add `--global` to make the skills available across projects.
   integrate). Not Cursor's cloud-agent `/orchestrate` plugin.
 - `visual-recap` creates and maintains a visual system recap in a pull request.
 - `ship-pr` iterates on CI and review feedback until a pull request is ready.
+- `prefer-local-kody-execute` prefers `@kodycodes/cli execute --local` over
+  hosted MCP `execute` when the agent has shell + Node.
 
 These skills use the GitHub CLI and expect it to be authenticated. Some
 workflows also use Kent's private Kody packages and project conventions.
