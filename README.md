@@ -39,6 +39,9 @@ its prompt without installing anything:
 npx skills use kentcdodds/kcd-skills@autopilot
 ```
 
+Add `-a claude-code`, `-a cursor`, or `-a codex` to start that agent with the
+prompt.
+
 Or just point your agent at
 https://github.com/kentcdodds/kcd-skills/blob/main/skills/autopilot/SKILL.md.
 
