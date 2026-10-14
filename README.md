@@ -27,9 +27,13 @@ npx skills add kentcdodds/kcd-skills --skill orchestrate
 npx skills add kentcdodds/kcd-skills --skill visual-recap
 npx skills add kentcdodds/kcd-skills --skill ship-pr
 npx skills add kentcdodds/kcd-skills --skill prefer-local-kody-execute
+npx skills add kentcdodds/kcd-skills --skill autopilot
 ```
 
-Add `--global` to make the skills available across projects.
+Add `--global` to make the skills available across projects. Add
+`-a claude-code`, `-a cursor`, or `-a codex` to install for one agent. Devin and
+Codex start from `AGENTS.md`, so add a line there that points at the installed
+`autopilot/SKILL.md`.
 
 ## Skills
 
@@ -43,6 +47,12 @@ Add `--global` to make the skills available across projects.
 - `ship-pr` iterates on CI and review feedback until a pull request is ready.
 - `prefer-local-kody-execute` prefers `@kodycodes/cli execute --local` over
   hosted MCP `execute` when the agent has shell + Node.
+- `autopilot` audits any repository and sets it up so agents ship changes
+  safely: agent instructions, decisions, a PR template with a system recap, a
+  deterministic ship-PR loop, friction reports, and a maturity ladder. Unlike
+  the other skills, it is generic and stack-agnostic. Kody is the recommended
+  default path but optional; without Kody it installs a portable `gh`-based
+  `scripts/ship-pr.mjs`.
 
 These skills use the GitHub CLI and expect it to be authenticated. Some
 workflows also use Kent's private Kody packages and project conventions.
