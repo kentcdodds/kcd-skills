@@ -114,11 +114,14 @@ decisions in code and keep the skill thin.
   step it returns, and tick again. Fork the package to change Kent's defaults
   (review bots, Discord summary).
 - **GitHub without Kody:** copy
-  [`../scripts/ship-pr.mjs`](../scripts/ship-pr.mjs) (Node 18+, needs an
-  authenticated `gh`). Each run reads the PR once and prints one next action
-  (`--json` for agents). It changes nothing unless the action is safe (mark a
-  draft ready) or you pass `--merge` and policy allows it. With no config, low
-  risk needs green CI only and medium/high park with "no reviewer configured".
+  [`ship-pr.mjs`](https://github.com/kentcdodds/kcd-skills/blob/main/skills/autopilot/scripts/ship-pr.mjs)
+  into the repo with
+  `curl -fsSL https://raw.githubusercontent.com/kentcdodds/kcd-skills/main/skills/autopilot/scripts/ship-pr.mjs -o scripts/ship-pr.mjs`
+  (adapt the folder; Node 18+, needs an authenticated `gh`). Each run reads the
+  PR once and prints one next action (`--json` for agents). It changes nothing
+  unless the action is safe (mark a draft ready) or you pass `--merge` and
+  policy allows it. With no config, low risk needs green CI only and medium/high
+  park with "no reviewer configured".
 
 Write `.github/ship-pr.json` from the interview answers. Whole-line `//`
 comments are allowed:
@@ -155,8 +158,8 @@ description:
 # Ship PR
 
 1. Fill the PR template, including the system recap.
-2. Run `node <skill>/scripts/ship-pr.mjs <pr> --risk <tier> --json` (or the Kody
-   tick).
+2. Run `node scripts/ship-pr.mjs <pr> --risk <tier> --json` (the copy in this
+   repo) or the Kody tick.
 3. Do the one action it returns: fix CI, address review threads (fix, or reply
    why not; never silently resolve "unsure"), resolve conflicts, or wait.
 4. Repeat step 2 until it says `merge`, `parked`, or `done`. Merge only with

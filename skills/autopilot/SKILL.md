@@ -63,15 +63,23 @@ Backups/restore tested:            unknown
 [`@kentcdodds/friction-log`](https://kody.codes/@kentcdodds/friction-log) are
 Kent's public packages with his defaults (Bugbot/CodeRabbit/Devin/Seer review
 sort, Discord summary, daily `kentcdodds/kody` sweep); fork and configure them.
-**No Kody:** copy [`scripts/ship-pr.mjs`](./scripts/ship-pr.mjs), write
-`.github/ship-pr.json` from this form, and use the issue form and CI cron.
+**No Kody:** copy
+[`ship-pr.mjs`](https://github.com/kentcdodds/kcd-skills/blob/main/skills/autopilot/scripts/ship-pr.mjs)
+into the repo
+(`curl -fsSL https://raw.githubusercontent.com/kentcdodds/kcd-skills/main/skills/autopilot/scripts/ship-pr.mjs -o scripts/ship-pr.mjs`;
+use the repo's script folder), write `.github/ship-pr.json` from this form, and
+use the issue form and CI cron.
 
 ## 3. Plan
 
 List PRs in ladder order, skipping done rungs, with files, effort, and door.
 Wait for approval.
 
-## 4. Ladder (one PR per rung, adapt [templates](./references/templates.md))
+## 4. Ladder (one PR per rung)
+
+Fetch and adapt the templates:
+`curl -fsSL https://raw.githubusercontent.com/kentcdodds/kcd-skills/main/skills/autopilot/references/templates.md`
+([view](https://github.com/kentcdodds/kcd-skills/blob/main/skills/autopilot/references/templates.md)).
 
 **Pillar 1: good PRs**
 
@@ -105,6 +113,7 @@ agent merges; loops come last because they amplify what exists.
 
 ## 5. Hand off
 
-Run the new verify command and `node <skill>/scripts/ship-pr.mjs --help` (or one
-Kody `tick`) once. Report their results, rung scores before/after, PRs opened,
-what you couldn't verify, and open decisions.
+Run the new verify command and the copied script's `--help` in the target repo
+(e.g. `node scripts/ship-pr.mjs --help`), or one Kody `tick`, once. Report their
+results, rung scores before/after, PRs opened, what you couldn't verify, and
+open decisions.
