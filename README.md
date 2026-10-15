@@ -22,9 +22,7 @@ npx skills add kentcdodds/kcd-skills
 Or install one:
 
 ```sh
-npx skills add kentcdodds/kcd-skills --skill ask-kent
 npx skills add kentcdodds/kcd-skills --skill review-and-recommend
-npx skills add kentcdodds/kcd-skills --skill orchestrate
 npx skills add kentcdodds/kcd-skills --skill visual-recap
 npx skills add kentcdodds/kcd-skills --skill ship-pr
 npx skills add kentcdodds/kcd-skills --skill prefer-local-kody-execute
@@ -47,12 +45,8 @@ https://github.com/kentcdodds/kcd-skills/blob/main/skills/autopilot/SKILL.md.
 
 ## Skills
 
-- `ask-kent` is the router: describe the situation, get the next `/skill` to
-  type. It recommends and stops.
 - `review-and-recommend` presents decision options with effort, then recommends
   one path and names the right fix.
-- `orchestrate` coordinates sub-agents for large tasks (plan, delegate, review,
-  integrate). Not Cursor's cloud-agent `/orchestrate` plugin.
 - `visual-recap` creates and maintains a visual system recap in a pull request.
 - `ship-pr` iterates on CI and review feedback until a pull request is ready.
 - `prefer-local-kody-execute` prefers `@kodycodes/cli execute --local` over
@@ -64,6 +58,10 @@ https://github.com/kentcdodds/kcd-skills/blob/main/skills/autopilot/SKILL.md.
   Unlike the other skills, it is generic and stack-agnostic. Kody is the
   recommended default path but optional; without Kody it copies a portable
   `gh`-based `ship-pr.mjs` into your repo.
+
+`orchestrate` lives in
+[kentcdodds/kody](https://github.com/kentcdodds/kody/tree/main/.agents/skills)
+(this repo no longer ships `ask-kent` or `orchestrate`).
 
 These skills use the GitHub CLI and expect it to be authenticated. Some
 workflows also use Kent's private Kody packages and project conventions.
