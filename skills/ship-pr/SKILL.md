@@ -9,9 +9,8 @@ description: >
 
 Run the Kody snippets below with **CLI local execute** when Node ≥ 22 is
 available — auth via provisioned `KODY_API_TOKEN` (Cloud Agents / CI) or
-`kody login` (interactive); see
-[prefer-local-cli-execute](https://github.com/kentcdodds/kody/blob/main/.agents/skills/prefer-local-cli-execute/SKILL.md)
-in kentcdodds/kody. Hosted MCP `execute` is the fallback.
+`kody login` (interactive); see `/prefer-local-kody-execute`. Hosted MCP
+`execute` is the fallback.
 
 ## AI reviewers
 

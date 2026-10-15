@@ -23,7 +23,9 @@ Or install one:
 
 ```sh
 npx skills add kentcdodds/kcd-skills --skill review-and-recommend
+npx skills add kentcdodds/kcd-skills --skill visual-recap
 npx skills add kentcdodds/kcd-skills --skill ship-pr
+npx skills add kentcdodds/kcd-skills --skill prefer-local-kody-execute
 ```
 
 Add `--global` to make the skills available across projects.
@@ -45,7 +47,10 @@ https://github.com/kentcdodds/kcd-skills/blob/main/skills/autopilot/SKILL.md.
 
 - `review-and-recommend` presents decision options with effort, then recommends
   one path and names the right fix.
+- `visual-recap` creates and maintains a visual system recap in a pull request.
 - `ship-pr` iterates on CI and review feedback until a pull request is ready.
+- `prefer-local-kody-execute` prefers `@kodycodes/cli execute --local` over
+  hosted MCP `execute` when the agent has shell + Node.
 - `autopilot` is a one-off: run `npx skills use kentcdodds/kcd-skills@autopilot`
   (don't install it). It audits any repository and sets it up so agents ship
   changes safely: agent instructions, decisions, a PR template with a system
@@ -54,9 +59,9 @@ https://github.com/kentcdodds/kcd-skills/blob/main/skills/autopilot/SKILL.md.
   recommended default path but optional; without Kody it copies a portable
   `gh`-based `ship-pr.mjs` into your repo.
 
-Shared Kody skills such as `orchestrate`, `visual-recap`, and
-`prefer-local-cli-execute` live in
-[kentcdodds/kody](https://github.com/kentcdodds/kody/tree/main/.agents/skills).
+`orchestrate` lives in
+[kentcdodds/kody](https://github.com/kentcdodds/kody/tree/main/.agents/skills)
+(this repo no longer ships `ask-kent` or `orchestrate`).
 
 These skills use the GitHub CLI and expect it to be authenticated. Some
 workflows also use Kent's private Kody packages and project conventions.
