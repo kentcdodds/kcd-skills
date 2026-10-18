@@ -1,0 +1,402 @@
+import assert from 'node:assert/strict'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import path from 'node:path'
+import test from 'node:test'
+import {
+	detect,
+	expandScript,
+	extractCiSteps,
+	mergePrevious,
+	rungs as detectRungs,
+	scriptCalls,
+} from '../skills/autopilot/scripts/audit-detect.mjs'
+import {
+	main,
+	planTable,
+	renderHtml,
+	renderText,
+	rungs as reportRungs,
+	validate,
+} from '../skills/autopilot/scripts/audit-report.mjs'
+
+function validAudit(overrides = {}) {
+	const scoreFor = { 1: 'partial', 2: 'missing', 5: 'done', 9: 'unknown' }
+	return {
+		schemaVersion: 1,
+		repo: { name: 'app', commit: 'abc1234' },
+		stack: { summary: 'node (npm) · vitest', evidence: ['package.json'] },
+		verify: { results: [{ command: 'npm run validate', exitCode: 0 }] },
+		findings: [{ text: 'CI skips `format:check`', rung: 1 }],
+		rungs: reportRungs.map(({ id, pillar, name }) => {
+			const score = scoreFor[id] ?? 'n/a'
+			return {
+				id,
+				pillar,
+				name,
+				score,
+				evidence: ['done', 'partial'].includes(score) ? ['AGENTS.md'] : [],
+				checked: ['docs/decisions/'],
+				notes: score === 'missing' || score === 'done' ? '' : `why ${id}`,
+			}
+		}),
+		...overrides,
+	}
+}
+
+function withRung(id, changes) {
+	const audit = validAudit()
+	audit.rungs = audit.rungs.map((rung) =>
+		rung.id === id ? { ...rung, ...changes } : rung,
+	)
+	return audit
+}
+
+const plan = [
+	{
+		rung: 1,
+		title: 'Run validate in CI',
+		files: ['.github/workflows/ci.yml'],
+		effort: 'S',
+		door: 'two-way',
+	},
+	{
+		rung: 2,
+		title: 'Seed decisions',
+		files: ['docs/decisions/README.md'],
+		effort: 'S',
+		door: 'two-way',
+	},
+]
+
+test('detect and report scripts share the same 12 rungs and pillars', () => {
+	assert.equal(reportRungs.length, 12)
+	assert.deepEqual(
+		detectRungs,
+		reportRungs.map(({ id, pillar, name }) => ({ id, pillar, name })),
+	)
+})
+
+test('extractCiSteps reads inline, block, folded, and script-list commands', () => {
+	const steps = extractCiSteps(`jobs:
+  test:
+    steps:
+      - run: npm ci
+      - name: Many
+        run: |
+          npm run lint
+          npm test
+      - name: Folded
+        run:
+          node --import ./server/hooks.mjs ./scripts/release.ts \${{
+          inputs.type }}
+      - run: "echo quoted"
+lint:
+  script:
+    - make lint
+    - make test
+`)
+	assert.deepEqual(steps, [
+		'npm ci',
+		'npm run lint\nnpm test',
+		'node --import ./server/hooks.mjs ./scripts/release.ts ${{ inputs.type }}',
+		'echo quoted',
+		'make lint',
+		'make test',
+	])
+})
+
+test('scriptCalls and expandScript resolve package script chains', () => {
+	assert.deepEqual(scriptCalls('npm ci && npm run lint && npm test'), [
+		'lint',
+		'test',
+	])
+	assert.deepEqual(scriptCalls('pnpm typecheck; yarn run build'), [
+		'typecheck',
+		'build',
+	])
+	const scripts = {
+		validate: 'npm run check && npm run test',
+		check: 'npm run format:check && npm run lint',
+		'format:check': 'prettier --check .',
+		lint: 'eslint .',
+		test: 'vitest run',
+	}
+	assert.deepEqual(expandScript(scripts, 'validate'), [
+		'format:check',
+		'lint',
+		'test',
+	])
+	assert.deepEqual(expandScript({ a: 'npm run a' }, 'a'), ['a'])
+})
+
+test('detect prefills evidence and deterministic findings without scoring', (t) => {
+	const root = mkdtempSync(path.join(tmpdir(), 'autopilot-detect-'))
+	t.after(() => rmSync(root, { recursive: true, force: true }))
+	const write = (file, text) => {
+		mkdirSync(path.dirname(path.join(root, file)), { recursive: true })
+		writeFileSync(path.join(root, file), text)
+	}
+	write(
+		'package.json',
+		JSON.stringify({
+			scripts: {
+				validate: 'npm run format:check && npm run lint',
+				'format:check': 'prettier --check .',
+				lint: 'eslint .',
+				'test:e2e': 'playwright test',
+			},
+			devDependencies: { '@sentry/node': '1.0.0' },
+		}),
+	)
+	write('package-lock.json', '{}')
+	write('AGENTS.md', '# Map\n\nRun `npm run validate`.\n')
+	write('docs/decisions/0001-no-orm.md', '# 0001: No ORM\n')
+	write(
+		'.github/pull_request_template.md',
+		'## Intent\n\nCleanup: none\n\n## Testing\n',
+	)
+	write(
+		'.github/workflows/ci.yml',
+		`on:
+  schedule:
+    - cron: '0 6 * * *'
+jobs:
+  lint:
+    steps:
+      - run: npm ci
+      - run: npm run lint
+      - run: node ./scripts/missing.mjs
+`,
+	)
+	write('README.md', '## Backups\n\nCopy the database file to restore.\n')
+	const result = detect(root)
+	const rung = (id) => result.rungs.find((r) => r.id === id)
+	assert.equal(result.verify.primary, 'npm run validate')
+	assert.deepEqual(
+		result.verify.steps.map((s) => [s.script, s.inCi]),
+		[
+			['format:check', false],
+			['lint', true],
+		],
+	)
+	assert.ok(
+		result.findings.some((f) =>
+			/scripts\/missing\.mjs, which does not exist/.test(f.text),
+		),
+	)
+	assert.ok(
+		result.findings.some(
+			(f) => f.rung === 1 && /skips `format:check`/.test(f.text),
+		),
+	)
+	assert.ok(rung(1).evidence.includes('AGENTS.md'))
+	assert.ok(rung(1).evidence.includes('package.json#scripts.validate'))
+	assert.deepEqual(rung(2).evidence, ['docs/decisions/0001-no-orm.md'])
+	assert.ok(rung(4).hints.some((h) => /test:e2e/.test(h)))
+	assert.ok(
+		rung(5).hints.some((h) => /lacks \[Why, Door, System recap\]/.test(h)),
+	)
+	assert.ok(rung(11).evidence.includes('.github/pull_request_template.md'))
+	assert.ok(rung(9).hints.some((h) => h.startsWith('README.md:1')))
+	assert.ok(rung(12).evidence.includes('.github/workflows/ci.yml'))
+	assert.ok(
+		rung(12).evidence.includes('package.json#dependencies.@sentry/node'),
+	)
+	assert.ok(result.rungs.every((r) => r.score === null && r.notes === ''))
+	assert.match(result.stack.summary, /node \(npm\)/)
+	// The skeleton is not a valid audit until the agent scores it.
+	assert.ok(
+		validate(result).some((e) => /rung 1\.score must be one of/.test(e)),
+	)
+})
+
+test('mergePrevious keeps judged fields when the detector re-runs', () => {
+	const previous = validAudit({ plan })
+	const next = {
+		...validAudit(),
+		verify: { results: [] },
+		rungs: validAudit().rungs.map((r) => ({
+			...r,
+			score: null,
+			notes: '',
+			evidence: [],
+		})),
+	}
+	const merged = mergePrevious(next, previous)
+	assert.equal(merged.rungs[0].score, 'partial')
+	assert.equal(merged.rungs[0].notes, 'why 1')
+	assert.deepEqual(merged.rungs[0].evidence, ['AGENTS.md'])
+	assert.deepEqual(merged.verify.results, previous.verify.results)
+	assert.deepEqual(merged.plan, plan)
+})
+
+test('validate accepts a complete audit and plan', () => {
+	assert.deepEqual(validate(validAudit()), [])
+	assert.deepEqual(validate(validAudit({ plan })), [])
+})
+
+test('validate rejects malformed audits with specific errors', () => {
+	const cases = [
+		[validAudit({ rungs: validAudit().rungs.slice(1) }), /exactly 12 entries/],
+		[
+			validAudit({ rungs: validAudit().rungs.slice(1) }),
+			/rung 1 \(.*\) is missing/,
+		],
+		[withRung(3, { pillar: 'review' }), /rung 3\.pillar must be "good-prs"/],
+		[withRung(3, { score: 'maybe' }), /rung 3\.score must be one of/],
+		[withRung(5, { evidence: [] }), /rung 5 is done but has no evidence/],
+		[
+			withRung(9, { notes: '' }),
+			/rung 9 is unknown: notes must say why and what to ask/,
+		],
+		[
+			withRung(2, { evidence: [], checked: [] }),
+			/rung 2 is missing: list what you looked for/,
+		],
+		[
+			withRung(4, { inferred: true, notes: '' }),
+			/rung 4 is inferred: notes must say why/,
+		],
+		[validAudit({ verify: { results: [] } }), /verify\.results must list/],
+		[
+			validAudit({
+				verify: { results: [{ command: 'x', exitCode: 0, skipped: 'y' }] },
+			}),
+			/not both/,
+		],
+		[validAudit({ schemaVersion: 2 }), /schemaVersion must be 1/],
+		[validAudit({ stack: {} }), /stack\.summary/],
+		[validAudit({ findings: [{ text: '' }] }), /findings\[0\]\.text/],
+	]
+	for (const [audit, pattern] of cases) {
+		const errors = validate(audit)
+		assert.ok(
+			errors.some((e) => pattern.test(e)),
+			`${pattern} not in ${JSON.stringify(errors)}`,
+		)
+	}
+	assert.deepEqual(validate(null), ['audit must be a JSON object'])
+})
+
+test('validate enforces plan rules for partial, unknown, done, and order', () => {
+	const errorsFor = (rows) => validate(validAudit({ plan: rows }))
+	assert.ok(
+		errorsFor([plan[0]]).some((e) =>
+			/rung 2 is missing but has no PR row/.test(e),
+		),
+	)
+	assert.ok(
+		errorsFor([...plan, { ...plan[0], rung: 9 }]).some((e) =>
+			/rung 9 is unknown; .*ask or verify first/.test(e),
+		),
+	)
+	assert.ok(
+		errorsFor([...plan, { ...plan[0], rung: 5 }]).some((e) =>
+			/rung 5 is done; only partial or missing/.test(e),
+		),
+	)
+	assert.ok(errorsFor([plan[1], plan[0]]).some((e) => /ladder order/.test(e)))
+	assert.ok(
+		errorsFor([plan[0], plan[0], plan[1]]).some((e) =>
+			/more than one PR/.test(e),
+		),
+	)
+	assert.ok(
+		errorsFor([{ ...plan[0], effort: 'XL', door: 'maybe', files: [] }, plan[1]])
+			.length >= 3,
+	)
+	assert.ok(
+		errorsFor([{ ...plan[0], pillar: 'review' }, plan[1]]).some((e) =>
+			/plan\[0\]\.pillar/.test(e),
+		),
+	)
+	assert.ok(
+		validate(
+			validAudit({ prs: [{ rung: 1, url: 'u', status: 'closed' }] }),
+		).some((e) => /prs\[0\]\.status/.test(e)),
+	)
+})
+
+test('renderText groups rungs by pillar, shows before → after, and the plan table', () => {
+	const before = validAudit()
+	const after = withRung(1, { score: 'done' })
+	after.plan = [plan[1]]
+	after.prs = [
+		{ rung: 1, url: 'https://example.test/pull/1', status: 'merged' },
+	]
+	const text = renderText(after, before)
+	assert.match(text, /P1 · Good PRs from the start/)
+	assert.match(text, /P3 · Limit blast radius/)
+	assert.match(text, /Keep improving/)
+	assert.match(text, /partial → done/)
+	assert.match(text, /Open questions \(no PR until answered\):\n  - Rung 9/)
+	assert.match(
+		text,
+		/\| Rung \| Pillar \| PR title \| Files \| Effort \| Door \| Needs \|/,
+	)
+	// Rung 1 is done now, so rung 2 has no open needs.
+	assert.match(
+		planTable(after),
+		/\| 2 \| P1 \| Seed decisions \| docs\/decisions\/README\.md \| S \| two-way \| — \|/,
+	)
+	assert.match(
+		planTable(validAudit({ plan })),
+		/\| 2 \| P1 \| Seed decisions .* \| 1 \|/,
+	)
+	assert.match(text, /rung 1: merged https:\/\/example\.test\/pull\/1/)
+})
+
+test('renderHtml is self-contained and escapes content', () => {
+	const audit = withRung(1, { notes: '<script>alert(1)</script>' })
+	const out = renderHtml({ ...audit, plan }, validAudit())
+	assert.match(out, /^<!doctype html>/)
+	assert.ok(!out.includes('<script>alert(1)</script>'))
+	assert.match(out, /&lt;script&gt;alert\(1\)&lt;\/script&gt;/)
+	assert.match(out, /<h2>Plan<\/h2>/)
+	assert.match(out, /P2 · Review, iteration, verification/)
+})
+
+test('main validates in every mode, writes HTML, and --json reports errors', () => {
+	const files = {
+		'good.json': JSON.stringify(validAudit({ plan })),
+		'bad.json': JSON.stringify(withRung(3, { score: 'maybe' })),
+		'broken.json': '{ nope',
+	}
+	const logs = []
+	const written = {}
+	const io = {
+		read: (file) => files[file],
+		write: (file, text) => {
+			written[file] = text
+		},
+		log: (line) => logs.push(line),
+	}
+	assert.equal(main(['good.json', '--html', 'out.html'], io), 0)
+	assert.match(written['out.html'], /Autopilot audit: app/)
+	assert.match(
+		logs.join('\n'),
+		/Score: done 1 · partial 1 · missing 1 · unknown 1 · n\/a 8/,
+	)
+	assert.throws(
+		() => main(['bad.json'], io),
+		/Invalid audit \(1 problem\):\n- bad\.json: rung 3\.score/,
+	)
+	assert.throws(
+		() => main(['broken.json'], io),
+		/broken\.json is not valid JSON/,
+	)
+	logs.length = 0
+	assert.equal(main(['bad.json', '--json'], io), 1)
+	assert.equal(JSON.parse(logs[0]).ok, false)
+	logs.length = 0
+	assert.equal(main(['good.json', '--json', '--before', 'good.json'], io), 0)
+	assert.deepEqual(JSON.parse(logs[0]).summary, {
+		done: 1,
+		partial: 1,
+		missing: 1,
+		unknown: 1,
+		'n/a': 8,
+	})
+	assert.throws(() => main(['good.json', '--nope'], io), /Unknown option/)
+})

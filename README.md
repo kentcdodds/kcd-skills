@@ -52,16 +52,18 @@ https://github.com/kentcdodds/kcd-skills/blob/main/skills/autopilot/SKILL.md.
 - `prefer-local-kody-execute` prefers `@kodycodes/cli execute --local` over
   hosted MCP `execute` when the agent has shell + Node.
 - `autopilot` is a one-off: run `npx skills use kentcdodds/kcd-skills@autopilot`
-  (don't install it). It audits any repository and sets it up so agents ship
-  changes safely: agent instructions, decisions, a PR template with a system
-  recap, a deterministic ship-PR loop, friction reports, and a maturity ladder.
-  Unlike the other skills, it is generic and stack-agnostic. Kody is the
+  (don't install it). It audits any repository against three pillars (good PRs,
+  review and verification, limited blast radius) with zero-dependency
+  `audit-detect.mjs` and `audit-report.mjs` scripts, then sets it up so agents
+  ship changes safely: agent instructions, decisions, a PR template with a
+  system recap, a deterministic ship-PR loop, friction reports, and a maturity
+  ladder. Unlike the other skills, it is generic and stack-agnostic. Kody is the
   recommended default path but optional; without Kody it copies a portable
   `gh`-based `ship-pr.mjs` into your repo.
 
 `orchestrate` lives in
-[kody-hq/kody](https://github.com/kody-hq/kody/tree/main/.agents/skills)
-(this repo no longer ships `ask-kent` or `orchestrate`).
+[kody-hq/kody](https://github.com/kody-hq/kody/tree/main/.agents/skills) (this
+repo no longer ships `ask-kent` or `orchestrate`).
 
 These skills use the GitHub CLI and expect it to be authenticated. Some
 workflows also use Kent's private Kody packages and project conventions.
