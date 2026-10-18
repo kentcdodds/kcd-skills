@@ -8,8 +8,8 @@ description:
 
 # Put this repo on autopilot
 
-Agents ship most changes; the human owns product decisions. Works on any stack.
-Every section maps to three pillars plus improvement loops.
+Agents ship most changes; the human owns product decisions. Any stack. Sections
+map to three pillars plus improvement loops.
 
 ## Principles
 
@@ -21,8 +21,7 @@ Every section maps to three pillars plus improvement loops.
 
 **P2 Review, iteration, and verification through CI and previews**
 
-4. Scripts decide anything checkable (audit facts, CI, PR state); agents make
-   judgment calls.
+4. Scripts decide anything checkable (audit facts, CI, PR state); agents judge.
 5. Never claim what you did not verify. Health checks are not feature tests.
 
 **P3 Limit blast radius when a mistake reaches production**
@@ -48,8 +47,8 @@ Every section maps to three pillars plus improvement loops.
 
 **P1 Good PRs**
 
-1. Agent map + verify: `AGENTS.md` (or equivalent) is a short map that links to
-   the docs owning each task; one verify command CI runs in full.
+1. Agent map + verify: `AGENTS.md` (or equivalent) is a short map linking to the
+   docs owning each task; one verify command CI runs in full.
 2. Decisions directory: records of the "no", each with "Revisit if".
 3. Primitives catalog: building blocks, code roots, docs.
 4. Self-verification: one documented command runs the app and exercises a real
@@ -74,8 +73,9 @@ Every section maps to three pillars plus improvement loops.
 10. Friction form: issue form + `friction`, `friction-skipped` labels, filed by
     every ship loop.
 11. Cleanup issues: `Cleanup:` issues with a falsifiable "ready when".
-12. Signals + cron agents: friction sweep, errors → issues, docs drift, test
-    pruning, legacy reaper.
+12. Cleanup cron agents (daily friction sweep, errors → issues, docs freshness,
+    test pruning, weekly legacy reaper) open PRs; only low/medium risk with
+    green CI auto-merges. See templates → **Cleanup automations**.
 
 Order: P1 first (checkable), then P2/P3 (trust), then loops.
 
@@ -105,8 +105,7 @@ node "$d/audit-detect.mjs" . --out "$d/before.json"
 
 ## 2. Interview
 
-Fill defaults from the audit; ask `____ (human)` fields and any blank or
-unknown.
+Fill defaults from the audit; ask `____ (human)` fields and any blank/unknown.
 
 ```text
 Use Kody (https://kody.codes)?   yes (default) | no
@@ -149,12 +148,12 @@ Until rung 6 merges, setup PRs pass verify + human review; after, also run the
 ship loop until `ready-to-merge` or `parked`.
 
 **Policy — merge-order dependency map:** Open a rung's PR only after its
-plan-table **Needs** have merged; others may run in parallel. Map lives in
+plan-table **Needs** merge; others may run in parallel. Map:
 `references/templates.md` → **Merge-order dependency map** (drives
-`audit-report.mjs`). Edit it there.
+`audit-report.mjs`); edit it there.
 
 **Policy — who merges setup PRs:** The human always merges setup PRs (they
-change the gates). Edit this line only if that policy changes.
+change the gates). Edit only if that policy changes.
 
 ## 5. Hand off
 

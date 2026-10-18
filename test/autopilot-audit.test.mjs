@@ -77,6 +77,40 @@ test('detect and report scripts share the same 12 rungs and pillars', () => {
 	)
 })
 
+test('detect recognizes rung 12 cleanup automations', (t) => {
+	const root = mkdtempSync(path.join(tmpdir(), 'autopilot-detect-'))
+	t.after(() => rmSync(root, { recursive: true, force: true }))
+	const write = (file, text) => {
+		mkdirSync(path.dirname(path.join(root, file)), { recursive: true })
+		writeFileSync(path.join(root, file), text)
+	}
+	write(
+		'.github/workflows/legacy-reaper.yml',
+		"on:\n  schedule:\n    - cron: '0 8 * * 1'\njobs: {}\n",
+	)
+	write('.github/workflows/docs-freshness.yml', 'on: workflow_dispatch\n')
+	write(
+		'AGENTS.md',
+		'# Map\n\nCleanup agents: forked codebase-cleanup (legacy reaper, keep-tests-tight).\n',
+	)
+	const rung12 = detect(root).rungs.find((r) => r.id === 12)
+	assert.equal(rung12.name, 'Signals + cleanup cron agents')
+	assert.ok(rung12.evidence.includes('.github/workflows/legacy-reaper.yml'))
+	assert.ok(rung12.evidence.includes('.github/workflows/docs-freshness.yml'))
+	assert.ok(rung12.checked.some((c) => /cleanup automation workflow/.test(c)))
+	assert.ok(
+		rung12.hints.some((h) => /^AGENTS\.md:3 .*codebase-cleanup/.test(h)),
+	)
+	assert.ok(
+		rung12.hints.some((h) =>
+			/legacy-reaper\.yml:3 schedule "0 8 \* \* 1"/.test(h),
+		),
+	)
+	const report = reportRungs.find((r) => r.id === 12)
+	assert.equal(report.name, rung12.name)
+	assert.deepEqual(report.needs, [10, 11])
+})
+
 test('extractCiSteps reads inline, block, folded, and script-list commands', () => {
 	const steps = extractCiSteps(`jobs:
   test:

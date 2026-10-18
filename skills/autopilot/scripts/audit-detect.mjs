@@ -27,7 +27,7 @@ export const rungs = [
 	{ id: 9, pillar: 'blast-radius', name: 'Backups + tested restore' },
 	{ id: 10, pillar: 'improve', name: 'Friction form' },
 	{ id: 11, pillar: 'improve', name: 'Cleanup issues' },
-	{ id: 12, pillar: 'improve', name: 'Signal pipelines + cron agents' },
+	{ id: 12, pillar: 'improve', name: 'Signals + cleanup cron agents' },
 ]
 
 const ignoredDirs = new Set([
@@ -125,6 +125,10 @@ const pathRules = {
 			'dependency or signal bot (dependabot, renovate, sentry config)',
 			/^\.github\/dependabot\.ya?ml$|(^|\/)renovate\.json5?$|^\.sentryclirc$|(^|\/)sentry\.[^/]+\.[cm]?[jt]s$/i,
 		],
+		[
+			'cleanup automation workflow (legacy reaper, friction sweep, docs freshness, test pruning, errors → issues)',
+			/^\.github\/workflows\/[^/]*(cleanup|reaper|friction|docs-fresh|prune|pruning|tests-tight|errors?-to-issues)[^/]*\.ya?ml$/i,
+		],
 	],
 }
 
@@ -134,7 +138,7 @@ const docRules = {
 	7: /\bpreview\b|\bstaging\b|\bdeploy/i,
 	8: /feature[- ]flags?|\brollback\b|roll back/i,
 	9: /\bbackups?\b|\brestore\b/i,
-	12: /\bcron\b|\bsentry\b|\balerts?\b/i,
+	12: /\bcron\b|\bsentry\b|\balerts?\b|legacy[- ]reaper|friction[- ]sweep|docs?[- ]freshness|keep-tests-tight|test[- ]pruning|errors? (→|->|to) issues|codebase-cleanup/i,
 }
 
 const depLabels = {
