@@ -1,7 +1,7 @@
 # KCD Skills
 
 Kent C. Dodds's personal agent skills from
-[Kody](https://github.com/kentcdodds/kody), shared directly from GitHub.
+[Kody](https://github.com/kody-hq/kody), shared directly from GitHub.
 
 Most of these skills are tuned to Kent's tools, accounts, and workflows—the
 `ship-pr` skill, for example, posts to Kent's Discord channel through his
@@ -60,7 +60,7 @@ https://github.com/kentcdodds/kcd-skills/blob/main/skills/autopilot/SKILL.md.
   `gh`-based `ship-pr.mjs` into your repo.
 
 `orchestrate` lives in
-[kentcdodds/kody](https://github.com/kentcdodds/kody/tree/main/.agents/skills)
+[kody-hq/kody](https://github.com/kody-hq/kody/tree/main/.agents/skills)
 (this repo no longer ships `ask-kent` or `orchestrate`).
 
 These skills use the GitHub CLI and expect it to be authenticated. Some
