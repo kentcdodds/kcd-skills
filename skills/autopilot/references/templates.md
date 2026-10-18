@@ -49,9 +49,18 @@ validates and renders it (`--json` prints `{ ok, errors, summary }` only).
 }
 ```
 
-The report computes each plan row's Pillar and Needs. Needs (merge first): 1
-before all; 5 before 6 and 11; 4 and 6 before 7; 6 before 10; 10 and 11
-before 12. Needs that are done or `n/a` drop out.
+## Merge-order dependency map
+
+The report computes each plan row's Pillar and Needs. **Needs** (merge first;
+edit here and keep `audit-report.mjs` `rungs[].needs` in sync):
+
+- 1 before all
+- 5 before 6 and 11
+- 4 and 6 before 7
+- 6 before 10
+- 10 and 11 before 12
+
+Needs that are done or `n/a` drop out.
 
 ## AGENTS.md (map, keep it short)
 
@@ -154,6 +163,22 @@ owner in this repo. One papercut per issue. Search open issues first. Never
 include secrets or private data. Not friction: one-off confusion, a nit about
 one session, speculation.
 
+## Kody yes / no
+
+**Kody yes** ([connect](https://kody.codes/docs/connect-your-agent.md);
+[secrets](https://kody.codes/docs/secrets.md) agents never read,
+[jobs](https://kody.codes/docs/triggers.md) for cron agents):
+[`@kentcdodds/ship-pr`](https://kody.codes/@kentcdodds/ship-pr) (`tick`) and
+[`@kentcdodds/friction-log`](https://kody.codes/@kentcdodds/friction-log) are
+**Kent's defaults** (Bugbot/CodeRabbit/Devin/Seer review sort, Discord summary,
+daily [`kody-hq/kody`](https://github.com/kody-hq/kody) sweep): a template to
+fork and reconfigure for your stack, not the only way.
+
+**Kody no:**
+`curl -fsSL https://raw.githubusercontent.com/kentcdodds/kcd-skills/main/skills/autopilot/scripts/ship-pr.mjs -o scripts/ship-pr.mjs`
+(use the repo's script folder), write `.github/ship-pr.json` from the interview
+form, and use the issue form and CI cron.
+
 ## Ship-PR loop
 
 Prose loops wander: each agent re-reads and re-interprets them. Put the
@@ -161,12 +186,8 @@ decisions in code and keep the skill thin.
 
 - **Kody:** call the `tick` export of
   [`@kentcdodds/ship-pr`](https://kody.codes/@kentcdodds/ship-pr), act on the
-  step it returns, and tick again. It ships with Kent's defaults (Bugbot,
-  CodeRabbit, Devin, and Seer review sort; Discord summary), and
-  [`@kentcdodds/friction-log`](https://kody.codes/@kentcdodds/friction-log) with
-  his daily [`kody-hq/kody`](https://github.com/kody-hq/kody) friction sweep.
-  Treat both as a starting template: fork them and set your reviewers, summary
-  destination, and swept repos.
+  step it returns, and tick again. Same Kent defaults as **Kody yes / no** above
+  — fork and reconfigure.
 - **GitHub without Kody:** copy
   [`ship-pr.mjs`](https://github.com/kentcdodds/kcd-skills/blob/main/skills/autopilot/scripts/ship-pr.mjs)
   into the repo with

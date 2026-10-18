@@ -77,13 +77,12 @@ Every section maps to three pillars plus improvement loops.
 12. Signals + cron agents: friction sweep, errors → issues, docs drift, test
     pruning, legacy reaper.
 
-Order: P1 makes everything checkable; P2 and P3 earn trust for agent merges;
-loops amplify what exists.
+Order: P1 first (checkable), then P2/P3 (trust), then loops.
 
 ## 1. Audit (read only)
 
-Change no tracked files; run no deploy, publish, release, or push step.
-Installing dependencies is fine. Scripts gather facts; you judge:
+Change no tracked files; run no deploy, publish, release, or push. Installing
+dependencies is fine. Scripts gather facts; you judge:
 
 ```sh
 d="${TMPDIR:-/tmp}/autopilot"; mkdir -p "$d"
@@ -96,11 +95,10 @@ node "$d/audit-detect.mjs" . --out "$d/before.json"
    detector with `--verify "<command>"` (it keeps your edits).
 2. **Host reads** (read-only `gh` or public API): reviewers and checks on recent
    PRs, labels, `friction` and `Cleanup:` issues. Cite the command as evidence.
-3. **Score every rung** against "done when" from the evidence, not file names
-   (the detector explains each field). If done hinges on a command working (rung
-   4, a restore test), run it with `--verify` if it needs no secrets, else cap
-   it at `partial`. Note what may live beyond what you can read (a NAS, Kody
-   jobs).
+3. **Score every rung** against "done when" from evidence, not file names. If
+   done needs a command (rung 4, restore test), run `--verify` when it needs no
+   secrets; else cap at `partial`. Note what may live outside the repo (NAS,
+   Kody jobs).
 4. **Report:**
    `node "$d/audit-report.mjs" "$d/before.json" --html "$d/before.html"`. Fix
    every error it lists.
@@ -125,31 +123,20 @@ P3 Backups/restore tested:       <detected | unknown>
 KI Issue tracker:                <detected>        labels: friction, friction-skipped
 ```
 
-"Must not do" seeds rung 2; "Always human" defines the high tier.
-
-**Kody yes** ([connect](https://kody.codes/docs/connect-your-agent.md);
-[secrets](https://kody.codes/docs/secrets.md) agents never read,
-[jobs](https://kody.codes/docs/triggers.md) for cron agents):
-[`@kentcdodds/ship-pr`](https://kody.codes/@kentcdodds/ship-pr) (`tick`) and
-[`@kentcdodds/friction-log`](https://kody.codes/@kentcdodds/friction-log) are
-**Kent's defaults** (Bugbot/CodeRabbit/Devin/Seer review sort, Discord summary,
-daily [`kody-hq/kody`](https://github.com/kody-hq/kody) sweep): a template to
-fork and reconfigure for your stack, not the only way. **Kody no:**
-`curl -fsSL https://raw.githubusercontent.com/kentcdodds/kcd-skills/main/skills/autopilot/scripts/ship-pr.mjs -o scripts/ship-pr.mjs`
-(use the repo's script folder), write `.github/ship-pr.json` from this form, and
-use the issue form and CI cron.
+"Must not do" seeds rung 2; "Always human" defines the high tier. Kody yes/no
+paths: **Kody yes / no** in `references/templates.md`.
 
 ## 3. Plan
 
-- `missing` or `partial`: one PR that finishes the rung, including its findings.
-  `done`: none. `unknown`: ask or verify; if still unknown, it's an open
-  question with no PR.
-- Answers never reorder rungs. A `none` answer (or default) narrows its rung's
-  PR (no previews in rung 7, no flags in rung 8); a rung that can't apply is
-  `n/a` with the reason in `notes` (a library has no backups).
+- `missing` or `partial`: one PR that finishes the rung (include findings).
+  `done`: none. `unknown`: ask or verify; if still unknown, open question, no
+  PR.
+- Answers never reorder rungs. A `none` answer (or default) narrows its rung (no
+  previews in 7, no flags in 8); inapplicable rungs are `n/a` with `notes` (e.g.
+  a library has no backups).
 - Add `plan` rows to `before.json` in ladder order:
   `{ "rung", "title", "files": [], "effort": "S|M|L", "door": "two-way|one-way" }`.
-  Re-run the report and show its **plan table** and open questions. Wait for
+  Re-run the report; show the **plan table** and open questions; wait for
   approval.
 
 ## 4. Ladder (one PR per rung)
@@ -158,12 +145,16 @@ Adapt the templates:
 `curl -fsSL https://raw.githubusercontent.com/kentcdodds/kcd-skills/main/skills/autopilot/references/templates.md`
 ([view](https://github.com/kentcdodds/kcd-skills/blob/main/skills/autopilot/references/templates.md)).
 
-- Open a rung's PR once its plan-table **Needs** merged; others may run in
-  parallel (after rung 1: 2–5, 8, 9). Later rungs build on earlier files;
-  stacked unmerged PRs mean rebases and broken links.
-- Until rung 6 merges, setup PRs pass the verify command and human review;
-  after, also run the ship loop on each until `ready-to-merge` or `parked`. The
-  human merges setup PRs: they change the gates themselves.
+Until rung 6 merges, setup PRs pass verify + human review; after, also run the
+ship loop until `ready-to-merge` or `parked`.
+
+**Policy — merge-order dependency map:** Open a rung's PR only after its
+plan-table **Needs** have merged; others may run in parallel. Map lives in
+`references/templates.md` → **Merge-order dependency map** (drives
+`audit-report.mjs`). Edit it there.
+
+**Policy — who merges setup PRs:** The human always merges setup PRs (they
+change the gates). Edit this line only if that policy changes.
 
 ## 5. Hand off
 

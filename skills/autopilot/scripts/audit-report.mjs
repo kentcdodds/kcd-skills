@@ -7,7 +7,8 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { pathToFileURL } from 'node:url'
 
 // Keep in sync with audit-detect.mjs (a test checks this). `needs` = rungs
-// whose PRs must merge before this rung's PR opens.
+// whose PRs must merge before this rung's PR opens — the merge-order
+// dependency map (policy); keep prose in references/templates.md in sync.
 export const rungs = [
 	{
 		id: 1,
