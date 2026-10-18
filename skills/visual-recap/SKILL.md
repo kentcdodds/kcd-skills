@@ -22,11 +22,11 @@ Run the classifier. Roll up to the highest of `adds`, then `extends`, then
 `composes`. You still choose `composes` vs `extends` from the diff. `adds` is a
 new map entry.
 
-| Rollup     | Risk   | Also                                                                                                                                                         |
-| ---------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `composes` | low    | Wiring and call sites only.                                                                                                                                  |
-| `extends`  | medium | [preview-manual-test](https://github.com/kentcdodds/kody/blob/main/.agents/skills/preview-manual-test/SKILL.md) as the seeded user with data for this change |
-| `adds`     | high   | Update `primitives.yaml`, `npm run primitives:check`, and the same preview                                                                                   |
+| Rollup     | Risk   | Also                                                                                                                                                      |
+| ---------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `composes` | low    | Wiring and call sites only.                                                                                                                               |
+| `extends`  | medium | [preview-manual-test](https://github.com/kody-hq/kody/blob/main/.agents/skills/preview-manual-test/SKILL.md) as the seeded user with data for this change |
+| `adds`     | high   | Update `primitives.yaml`, `npm run primitives:check`, and the same preview                                                                                |
 
 Update `primitives.yaml` when this PR adds, removes, or materially reshapes a
 primitive (new `id`, renamed meaning, or ownership roots that must change). Do

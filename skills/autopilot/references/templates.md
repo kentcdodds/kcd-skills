@@ -3,6 +3,56 @@
 Starting points for the autopilot skill. Rename sections, paths, labels, and
 commands to fit the repo. Remove what does not apply.
 
+## Audit JSON
+
+`audit-detect.mjs` writes it; you fill the judgment fields; `audit-report.mjs`
+validates and renders it (`--json` prints `{ ok, errors, summary }` only).
+
+```jsonc
+{
+	"schemaVersion": 1,
+	"repo": { "name": "app", "commit": "abc1234" },
+	"stack": {
+		"summary": "node (pnpm) · next, vitest",
+		"evidence": ["package.json"],
+	},
+	// Each command you ran (exitCode), or { "command", "skipped": "<reason>" }.
+	"verify": { "results": [{ "command": "pnpm run verify", "exitCode": 0 }] },
+	// Deterministic findings from the detector plus your own.
+	"findings": [{ "text": "CI skips format check", "rung": 1 }],
+	"rungs": [
+		{
+			"id": 1, // all 12, once each; pillar must match the rung
+			"pillar": "good-prs", // good-prs | review | blast-radius | improve
+			"name": "Agent map + one verify command in CI",
+			"score": "partial", // done | partial | missing | unknown | n/a
+			"evidence": ["AGENTS.md", ".github/workflows/ci.yml"], // supports the score
+			"checked": [], // looked for, not found (needed for missing/unknown without evidence)
+			"inferred": false, // true when no file can show it; needs notes
+			"notes": "CI runs lint and test but not format:check", // required unless done/missing
+		},
+	],
+	// Plan step: one row per partial/missing rung, ladder order.
+	"plan": [
+		{
+			"rung": 1,
+			"title": "Run the full verify command in CI",
+			"files": [".github/workflows/ci.yml"],
+			"effort": "S", // S | M | L
+			"door": "two-way", // two-way | one-way
+		},
+	],
+	// Hand-off step.
+	"prs": [
+		{ "rung": 1, "url": "https://…/pull/12", "status": "open", "note": "" },
+	],
+}
+```
+
+The report computes each plan row's Pillar and Needs. Needs (merge first): 1
+before all; 5 before 6 and 11; 4 and 6 before 7; 6 before 10; 10 and 11
+before 12. Needs that are done or `n/a` drop out.
+
 ## AGENTS.md (map, keep it short)
 
 ```md
@@ -111,8 +161,12 @@ decisions in code and keep the skill thin.
 
 - **Kody:** call the `tick` export of
   [`@kentcdodds/ship-pr`](https://kody.codes/@kentcdodds/ship-pr), act on the
-  step it returns, and tick again. Fork the package to change Kent's defaults
-  (review bots, Discord summary).
+  step it returns, and tick again. It ships with Kent's defaults (Bugbot,
+  CodeRabbit, Devin, and Seer review sort; Discord summary), and
+  [`@kentcdodds/friction-log`](https://kody.codes/@kentcdodds/friction-log) with
+  his daily [`kody-hq/kody`](https://github.com/kody-hq/kody) friction sweep.
+  Treat both as a starting template: fork them and set your reviewers, summary
+  destination, and swept repos.
 - **GitHub without Kody:** copy
   [`ship-pr.mjs`](https://github.com/kentcdodds/kcd-skills/blob/main/skills/autopilot/scripts/ship-pr.mjs)
   into the repo with

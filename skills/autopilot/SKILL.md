@@ -9,18 +9,30 @@ description:
 # Put this repo on autopilot
 
 Agents ship most changes; the human owns product decisions. Works on any stack.
+Every section maps to three pillars plus improvement loops.
 
 ## Principles
 
-1. **Good PRs:** the repo tells agents what to build and how to prove it.
-2. **Catch mistakes:** a deterministic loop, not a prompt, decides when a PR is
-   done.
-3. **Limit blast radius:** risky changes ship dark, and recovery is tested.
-4. One small `AGENTS.md` map and one verify command (local == CI).
-5. Write down the "no": decisions agents would otherwise re-propose.
-6. Never claim what you did not verify. Health checks are not feature tests.
-7. Agents file friction after every PR; other agents fix it.
-8. Product calls and one-way doors go to the human.
+**P1 Good PRs from the start**
+
+1. The repo tells agents what to build and how to prove it.
+2. One small `AGENTS.md` map and one verify command (local == CI).
+3. Write down the "no": decisions agents would otherwise re-propose.
+
+**P2 Review, iteration, and verification through CI and previews**
+
+4. Scripts decide anything checkable (audit facts, CI, PR state); agents make
+   judgment calls.
+5. Never claim what you did not verify. Health checks are not feature tests.
+
+**P3 Limit blast radius when a mistake reaches production**
+
+6. Risky changes ship dark, and recovery is tested.
+7. Product calls and one-way doors go to the human.
+
+**KI Keep improving**
+
+8. Agents file friction after every PR; other agents fix it.
 
 ## Rules
 
@@ -32,88 +44,135 @@ Agents ship most changes; the human owns product decisions. Works on any stack.
   "release".
 - No secrets in files, issues, or PRs.
 
+## Rungs: done when (audit checklist and ladder)
+
+**P1 Good PRs**
+
+1. Agent map + verify: `AGENTS.md` (or equivalent) is a short map that links to
+   the docs owning each task; one verify command CI runs in full.
+2. Decisions directory: records of the "no", each with "Revisit if".
+3. Primitives catalog: building blocks, code roots, docs.
+4. Self-verification: one documented command runs the app and exercises a real
+   workflow.
+5. PR template: Intent, Why, Door, Cleanup, Testing, System recap.
+
+**P2 Review and verification**
+
+6. Ship loop: Kody `ship-pr` or `ship-pr.mjs` + config, behind a thin `ship-pr`
+   skill.
+7. Reviewers + previews: AI reviewers per tier, verified previews, agent merge,
+   running-version check after deploy.
+
+**P3 Blast radius**
+
+8. Flags + rollback: flags with owner, metric, removal condition; rollback
+   runbook.
+9. Backups: scheduled, isolated restore test.
+
+**KI Keep improving**
+
+10. Friction form: issue form + `friction`, `friction-skipped` labels, filed by
+    every ship loop.
+11. Cleanup issues: `Cleanup:` issues with a falsifiable "ready when".
+12. Signals + cron agents: friction sweep, errors → issues, docs drift, test
+    pruning, legacy reaper.
+
+Order: P1 makes everything checkable; P2 and P3 earn trust for agent merges;
+loops amplify what exists.
+
 ## 1. Audit (read only)
 
-With paths, record: stack, agent files, verify commands (run them), CI,
-previews, deploy, templates, review bots, ADRs, flags, backups, schedules. Score
-each rung: done, partial, missing, or unknown.
+Change no tracked files; run no deploy, publish, release, or push step.
+Installing dependencies is fine. Scripts gather facts; you judge:
+
+```sh
+d="${TMPDIR:-/tmp}/autopilot"; mkdir -p "$d"
+for f in audit-detect audit-report; do curl -fsSL "https://raw.githubusercontent.com/kentcdodds/kcd-skills/main/skills/autopilot/scripts/$f.mjs" -o "$d/$f.mjs"; done
+node "$d/audit-detect.mjs" . --out "$d/before.json"
+```
+
+1. **Verify command:** the gate `AGENTS.md` or contributing docs name, else
+   `verify.primary`, else each local CI step. Record each by re-running the
+   detector with `--verify "<command>"` (it keeps your edits).
+2. **Host reads** (read-only `gh` or public API): reviewers and checks on recent
+   PRs, labels, `friction` and `Cleanup:` issues. Cite the command as evidence.
+3. **Score every rung** against "done when" from the evidence, not file names
+   (the detector explains each field). If done hinges on a command working (rung
+   4, a restore test), run it with `--verify` if it needs no secrets, else cap
+   it at `partial`. Note what may live beyond what you can read (a NAS, Kody
+   jobs).
+4. **Report:**
+   `node "$d/audit-report.mjs" "$d/before.json" --html "$d/before.html"`. Fix
+   every error it lists.
 
 ## 2. Interview
 
-Show this form with detected defaults; ask only about blanks.
+Fill defaults from the audit; ask `____ (human)` fields and any blank or
+unknown.
 
 ```text
-Use Kody (https://kody.codes)?     yes (default) | no
-Agent may merge:                   low risk (default) | low+medium | none
-Risk tiers:                        low = CI green; medium = +AI reviewer +preview; high = +human
-Always human:                      auth, payments, migrations, public API, store releases
-AI reviewers per tier:             <detected logins/check names, or none>
-Deploy/release:                    <detected>        version check: <url/command>
-Preview or staging:                <detected | none>
-Issue tracker:                     <detected>        labels: friction, friction-skipped
-Flags + metrics source:            <detected | none>
-Backups/restore tested:            unknown
-3-5 things agents must not do:     ____
+Use Kody (https://kody.codes)?   yes (default) | no
+P1 Things agents must not do:    ____ (human) 3-5; lens: irreversible, expensive, or user-facing
+P2 Agent may merge:              low risk (default) | low+medium | none
+P2 Risk tiers:                   low = CI green; medium = +AI reviewer +preview (none: rung 4 script); high = +human
+P2 AI reviewers:                 <detected logins/check names, or none> on medium + high
+P2 Preview or staging:           <detected | none>
+P3 Always human:                 ____ (human) Name the changes that must never ship without you
+                                 (e.g. auth, payments, migrations, public API, store releases)
+P3 Deploy/release:               <detected>        version check: <url/command>
+P3 Flags + metrics source:       <detected | none>
+P3 Backups/restore tested:       <detected | unknown>
+KI Issue tracker:                <detected>        labels: friction, friction-skipped
 ```
 
-**Kody** ([connect over MCP](https://kody.codes/docs/connect-your-agent.md)):
-[secrets](https://kody.codes/docs/secrets.md) agents use but never read, and
-[jobs/webhooks](https://kody.codes/docs/triggers.md) for cron and signal agents.
+"Must not do" seeds rung 2; "Always human" defines the high tier.
+
+**Kody yes** ([connect](https://kody.codes/docs/connect-your-agent.md);
+[secrets](https://kody.codes/docs/secrets.md) agents never read,
+[jobs](https://kody.codes/docs/triggers.md) for cron agents):
 [`@kentcdodds/ship-pr`](https://kody.codes/@kentcdodds/ship-pr) (`tick`) and
 [`@kentcdodds/friction-log`](https://kody.codes/@kentcdodds/friction-log) are
-Kent's public packages with his defaults (Bugbot/CodeRabbit/Devin/Seer review
-sort, Discord summary, daily `kentcdodds/kody` sweep); fork and configure them.
-**No Kody:** copy
-[`ship-pr.mjs`](https://github.com/kentcdodds/kcd-skills/blob/main/skills/autopilot/scripts/ship-pr.mjs)
-into the repo
-(`curl -fsSL https://raw.githubusercontent.com/kentcdodds/kcd-skills/main/skills/autopilot/scripts/ship-pr.mjs -o scripts/ship-pr.mjs`;
-use the repo's script folder), write `.github/ship-pr.json` from this form, and
+**Kent's defaults** (Bugbot/CodeRabbit/Devin/Seer review sort, Discord summary,
+daily [`kody-hq/kody`](https://github.com/kody-hq/kody) sweep): a template to
+fork and reconfigure for your stack, not the only way. **Kody no:**
+`curl -fsSL https://raw.githubusercontent.com/kentcdodds/kcd-skills/main/skills/autopilot/scripts/ship-pr.mjs -o scripts/ship-pr.mjs`
+(use the repo's script folder), write `.github/ship-pr.json` from this form, and
 use the issue form and CI cron.
 
 ## 3. Plan
 
-List PRs in ladder order, skipping done rungs, with files, effort, and door.
-Wait for approval.
+- `missing` or `partial`: one PR that finishes the rung, including its findings.
+  `done`: none. `unknown`: ask or verify; if still unknown, it's an open
+  question with no PR.
+- Answers never reorder rungs. A `none` answer (or default) narrows its rung's
+  PR (no previews in rung 7, no flags in rung 8); a rung that can't apply is
+  `n/a` with the reason in `notes` (a library has no backups).
+- Add `plan` rows to `before.json` in ladder order:
+  `{ "rung", "title", "files": [], "effort": "S|M|L", "door": "two-way|one-way" }`.
+  Re-run the report and show its **plan table** and open questions. Wait for
+  approval.
 
 ## 4. Ladder (one PR per rung)
 
-Fetch and adapt the templates:
+Adapt the templates:
 `curl -fsSL https://raw.githubusercontent.com/kentcdodds/kcd-skills/main/skills/autopilot/references/templates.md`
 ([view](https://github.com/kentcdodds/kcd-skills/blob/main/skills/autopilot/references/templates.md)).
 
-**Pillar 1: good PRs**
-
-1. `AGENTS.md` map + one verify command in CI.
-2. Decisions directory seeded from the interview.
-3. Primitives catalog: building blocks, code roots, docs.
-4. Self-verification script that runs the app and exercises a workflow.
-5. PR template: Intent, Why, Door, Cleanup, Testing, System recap.
-
-**Pillar 2: catch mistakes**
-
-6. Ship loop: Kody `ship-pr` or `scripts/ship-pr.mjs` + `.github/ship-pr.json` +
-   a thin `ship-pr` skill. Prose loops wander.
-7. AI reviewers + preview verification, then agent merge + deploy watch (check
-   the running version).
-
-**Pillar 3: limit blast radius**
-
-8. Flags with owner, success metric, removal condition; rollback runbook.
-9. Backups with a scheduled, isolated restore test.
-
-**Then: keep improving**
-
-10. Friction issue form + labels, filed at the end of every ship loop.
-11. `Cleanup:` issues with a falsifiable "ready when".
-12. Signal pipelines + cron agents: friction sweep, errors → issues, docs drift,
-    test pruning, legacy reaper.
-
-Order: good PRs make everything checkable; gates and safeguards earn trust for
-agent merges; loops come last because they amplify what exists.
+- Open a rung's PR once its plan-table **Needs** merged; others may run in
+  parallel (after rung 1: 2–5, 8, 9). Later rungs build on earlier files;
+  stacked unmerged PRs mean rebases and broken links.
+- Until rung 6 merges, setup PRs pass the verify command and human review;
+  after, also run the ship loop on each until `ready-to-merge` or `parked`. The
+  human merges setup PRs: they change the gates themselves.
 
 ## 5. Hand off
 
-Run the new verify command and the copied script's `--help` in the target repo
-(e.g. `node scripts/ship-pr.mjs --help`), or one Kody `tick`, once. Report their
-results, rung scores before/after, PRs opened, what you couldn't verify, and
-open decisions.
+Hand off once every planned PR is merged or open.
+
+1. Copy `before.json` to `after.json`; re-score merged rungs; add `prs` rows:
+   `{ "rung", "url", "status": "merged|open|parked", "note" }`.
+2. Run the verify command and `node scripts/ship-pr.mjs --help` (or one Kody
+   `tick`) in the target repo.
+3. Report
+   `node "$d/audit-report.mjs" "$d/after.json" --before "$d/before.json" --html "$d/after.html"`,
+   those results, what you couldn't verify, and open decisions.

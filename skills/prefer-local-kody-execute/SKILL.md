@@ -54,7 +54,7 @@ Saved packages keep `--local` and a static `kody:@…` import.
 - `search` is forbidden. Default bootstrap scopes are local-execute use scopes
   (`org:execute`, `org:read`, package/integration/secret/email/job/app/memory
   use scopes), plus `package:write` and `token:delete` — not `search:read`
-  ([ADR 0056](https://github.com/kentcdodds/kody/blob/main/docs/contributing/decisions/0056-cli-credential-bootstrap.md)).
+  ([ADR 0056](https://github.com/kody-hq/kody/blob/main/docs/contributing/decisions/0056-cli-credential-bootstrap.md)).
   `whoami` works. Use MCP `search`, or a token with `search:read`.
 - The module imports `kody:@…`. Keep `--local`. Default bootstrap includes
   `package:execute` and `integration:read` so package-graph and
