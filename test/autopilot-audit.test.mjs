@@ -106,6 +106,12 @@ test('detect recognizes rung 12 cleanup automations', (t) => {
 			/legacy-reaper\.yml:3 schedule "0 8 \* \* 1"/.test(h),
 		),
 	)
+	write('docs/ops.md', 'Our errors-to-issues agent files bugs.\n')
+	assert.ok(
+		detect(root)
+			.rungs.find((r) => r.id === 12)
+			.hints.some((h) => /^docs\/ops\.md:1 /.test(h)),
+	)
 	const report = reportRungs.find((r) => r.id === 12)
 	assert.equal(report.name, rung12.name)
 	assert.deepEqual(report.needs, [10, 11])

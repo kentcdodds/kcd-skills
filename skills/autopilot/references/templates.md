@@ -181,8 +181,10 @@ form, and use the issue form and CI cron.
 
 ## Cleanup automations (rung 12)
 
-Recommended scheduled agents. Each one opens a PR (one per run, none when there
-is nothing to do) and goes through the ship loop like any other change.
+Recommended agents: four on a schedule, plus event-driven errors → issues. Each
+one opens a PR (one per run, none when there is nothing to do; errors → issues
+files the issue first, then a PR once the cause is clear) and goes through the
+ship loop like any other change.
 
 | Automation                        | When                                    | Opens a PR that…                                                                                                |
 | --------------------------------- | --------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
@@ -208,7 +210,9 @@ it. A template to fork and adapt, not required.
 
 **Kody no:** one scheduled CI workflow per automation (`schedule:` cron, or a
 scheduled pipeline) that launches your coding agent with the same prompt and
-merge gate. Name the files after the automation (for example
+merge gate. Trigger errors → issues from your error tracker's alert webhook
+(`repository_dispatch`) or a failed default-branch `workflow_run`, not a
+schedule. Name the files after the automation (for example
 `.github/workflows/legacy-reaper.yml`) so the audit finds them.
 
 ## Ship-PR loop

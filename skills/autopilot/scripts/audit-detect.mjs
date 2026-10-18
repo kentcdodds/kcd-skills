@@ -138,7 +138,7 @@ const docRules = {
 	7: /\bpreview\b|\bstaging\b|\bdeploy/i,
 	8: /feature[- ]flags?|\brollback\b|roll back/i,
 	9: /\bbackups?\b|\brestore\b/i,
-	12: /\bcron\b|\bsentry\b|\balerts?\b|legacy[- ]reaper|friction[- ]sweep|docs?[- ]freshness|keep-tests-tight|test[- ]pruning|errors? (→|->|to) issues|codebase-cleanup/i,
+	12: /\bcron\b|\bsentry\b|\balerts?\b|legacy[- ]reaper|friction[- ]sweep|docs?[- ]freshness|keep-tests-tight|test[- ]pruning|errors?(-to-| (→|->|to) )issues|codebase-cleanup/i,
 }
 
 const depLabels = {
