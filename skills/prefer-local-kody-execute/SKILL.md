@@ -18,6 +18,10 @@ with local execute. Do not use hosted MCP `execute`. This skill and
 (`guide:local_execute`) are the source of truth. Open API fallback:
 [Open API](https://kody.codes/docs/open-api) (`guide:open_api`).
 
+Local CPU is not counted as `execute` or `dynamic_worker_day`. Capabilities
+called through the proxy still meter normally. Prefer `KODY_API_TOKEN` in the
+environment over `--token` so the secret is not visible in process arguments.
+
 ## Command
 
 Agents already on MCP: call `cliCredentialBootstrap` with a required lifetime
