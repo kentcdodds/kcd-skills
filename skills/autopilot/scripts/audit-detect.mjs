@@ -605,7 +605,7 @@ export function detect(root, { verify = [], timeout = 900 } = {}) {
 	const guide = '(references/verification.md)'
 	if (!hasControlCli && !hasControlSkill) {
 		findings.push({
-			text: `No project control CLI or skill found (tools/control-*.ts, bin/control-*, .agents/skills/control-*/SKILL.md). Plan a rung 4 PR to build one: doctor, dev, login, request --contains, preview --pr, health --sha, browse --record, map --check ${guide}.`,
+			text: `No project control CLI or skill found (tools/control-*.ts, bin/control-*, .agents/skills/control-*/SKILL.md). Plan a rung 4 PR to build one that verifies locally: doctor, dev, login, request --contains, execute, browse --record, map --check, health --sha; preview --pr only for production-like checks ${guide}.`,
 			rung: 4,
 		})
 	} else if (!hasControlCli) {
@@ -621,7 +621,7 @@ export function detect(root, { verify = [], timeout = 900 } = {}) {
 	}
 	if (!hasFeatureMap) {
 		findings.push({
-			text: `No Feature Map found (feature-catalog.*, feature-map.*, skills/control-*/references/features/). Plan a rung 4 PR to add one with \`map --check\` in CI and a scheduled agent that keeps it fresh ${guide}.`,
+			text: `No Feature Map found (feature-catalog.*, feature-map.*, skills/control-*/references/features/). For an app with routes, plan a rung 4 PR to generate one from the framework's route list, with seed-and-reach notes per page and \`map --check\` in CI; projects without routes skip it ${guide}.`,
 			rung: 4,
 		})
 	}
