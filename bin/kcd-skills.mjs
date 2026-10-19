@@ -101,11 +101,23 @@ function describe(name) {
 	return summary.match(/^.*?[.!?](?=\s|$)/)?.[0] ?? summary
 }
 
+function commandLines(skill) {
+	const lines = []
+	for (const [name, command] of Object.entries(commands[skill] ?? {})) {
+		lines.push(`    ${skill} ${name.padEnd(13)} ${command.summary}`)
+	}
+	for (const name of listReferences(skill)) {
+		lines.push(`    ${skill} ${name.padEnd(13)} Print references/${name}.md`)
+	}
+	return lines
+}
+
 export function help() {
 	const lines = [
 		`kcd-skills ${version}`,
 		'',
 		'Usage: npx kcd-skills@latest <skill>            print the skill instructions',
+		'       npx kcd-skills@latest <skill> --help     list the skill commands',
 		'       npx kcd-skills@latest <skill> <command>  run one of its commands (--help for options)',
 		'',
 		'Skills:',
@@ -114,14 +126,28 @@ export function help() {
 		lines.push(`  ${skill}`)
 		const summary = describe(skill)
 		if (summary) lines.push(`    ${summary}`)
-		for (const [name, command] of Object.entries(commands[skill] ?? {})) {
-			lines.push(`    ${skill} ${name.padEnd(13)} ${command.summary}`)
-		}
-		for (const name of listReferences(skill)) {
-			lines.push(`    ${skill} ${name.padEnd(13)} Print references/${name}.md`)
-		}
+		lines.push(...commandLines(skill))
 	}
 	return lines.join('\n')
+}
+
+export function skillHelp(skill) {
+	const lines = [
+		`kcd-skills ${version} ${skill}`,
+		describe(skill),
+		'',
+		`Usage: npx kcd-skills@latest ${skill}            print the skill instructions`,
+	]
+	const commandList = commandLines(skill)
+	if (commandList.length) {
+		lines.push(
+			`       npx kcd-skills@latest ${skill} <command>  run a command (add --help for its options)`,
+			'',
+			'Commands:',
+			...commandList,
+		)
+	}
+	return lines.filter((line, i) => line || i !== 1).join('\n')
 }
 
 export async function run(
@@ -141,6 +167,10 @@ export async function run(
 		throw new Error(
 			`Unknown skill: ${skill}. Skills: ${listSkills().join(', ')}. Run kcd-skills --help.`,
 		)
+	}
+	if (['--help', '-h', 'help'].includes(command)) {
+		io.log(skillHelp(skill))
+		return 0
 	}
 	if (!command) {
 		const text = readFileSync(path.join(skillsDir, skill, 'SKILL.md'), 'utf8')
