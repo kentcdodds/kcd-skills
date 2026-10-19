@@ -150,10 +150,10 @@ Adapt the templates:
 Until rung 6 merges, setup PRs pass verify + human review; after, also run the
 ship loop until `ready-to-merge` or `parked`.
 
-**Prove it:** once rung 4 lands, every PR is proven on its preview with the
-control CLI before merge (`preview --pr`, `request --contains`,
-`browse --record` for UI; `health --sha` after deploy), and **Testing** cites
-those commands.
+**Prove it:** once rung 4 lands, every PR is proven with the control CLI before
+merge: on its preview (`preview --pr`), or against `dev` when there is none;
+`request --contains`, `browse --record` for UI, `health --sha` after deploy.
+**Testing** cites those commands.
 
 **Policy — merge-order dependency map:** Open a rung's PR only after its
 plan-table **Needs** merge; others may run in parallel. Map:

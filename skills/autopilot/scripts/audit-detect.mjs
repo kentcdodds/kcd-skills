@@ -44,11 +44,14 @@ const ignoredDirs = new Set([
 	'coverage',
 ])
 
-// Rung 4: a project control CLI (tools/control-kody.ts shape) or its skill.
-const controlLabel =
-	'project control CLI or skill (tools/control-*.ts, bin/control-*, .agents/skills/control-*/SKILL.md)'
-const controlPathPattern =
-	/^(tools|scripts|bin)\/control[-_][^/]+$|^bin\/control$|^\.(agents|cursor|claude|codex)\/skills\/control-[^/]+\/SKILL\.md$/i
+// Rung 4: a project control CLI (tools/control-kody.ts shape), its skill, and
+// a Feature Map. Each is checked on its own.
+const controlCliPathPattern =
+	/^(tools|scripts|bin)\/control[-_][^/]+$|^bin\/control$/i
+const controlSkillPathPattern =
+	/^\.(agents|cursor|claude|codex)\/skills\/control-[^/]+\/SKILL\.md$/i
+const featureMapPathPattern =
+	/(^|\/)feature[-_]?(catalog|map)[^/]*\.[a-z]+$|^\.(agents|cursor|claude|codex)\/skills\/control-[^/]+\/references\/features\/README\.md$/i
 const controlScriptPattern = /^control([-:_]|$)/i
 
 // Per rung: [label, path regex] pairs. A match becomes evidence.
@@ -80,7 +83,18 @@ const pathRules = {
 			'e2e or self-verify config (playwright, cypress, *smoke*, *self-verify*)',
 			/(^|\/)(playwright|cypress)[^/]*\.(config\.)?[cm]?[jt]s$|(^|\/)[^/]*(smoke|self-verify|verify-app)[^/]*\.[a-z]+$/i,
 		],
-		[controlLabel, controlPathPattern],
+		[
+			'project control CLI (tools/control-*.ts, scripts/control-*, bin/control-*)',
+			controlCliPathPattern,
+		],
+		[
+			'control skill (.agents/skills/control-*/SKILL.md)',
+			controlSkillPathPattern,
+		],
+		[
+			'Feature Map (feature-catalog.*, feature-map*, skills/control-*/references/features/README.md)',
+			featureMapPathPattern,
+		],
 	],
 	5: [
 		[
@@ -578,14 +592,36 @@ export function detect(root, { verify = [], timeout = 900 } = {}) {
 			evidence[4].add(`package.json#scripts.${name}`)
 	}
 	checked[4].push('control CLI package script or bin (control-*)')
-	const hasControl = [...evidence[4]].some(
+	const items4 = [...evidence[4]]
+	const hasControlCli = items4.some(
 		(item) =>
-			controlPathPattern.test(item) ||
+			controlCliPathPattern.test(item) ||
 			/^package\.json#(scripts|bin)\.control/i.test(item),
 	)
-	if (!hasControl) {
+	const hasControlSkill = items4.some((item) =>
+		controlSkillPathPattern.test(item),
+	)
+	const hasFeatureMap = items4.some((item) => featureMapPathPattern.test(item))
+	const guide = '(references/verification.md)'
+	if (!hasControlCli && !hasControlSkill) {
 		findings.push({
-			text: 'No project control CLI or skill found (tools/control-*.ts, bin/control-*, .agents/skills/control-*/SKILL.md). Plan a rung 4 PR to build one: doctor, dev, login, request --contains, preview --pr, health --sha, browse --record, map --check (references/verification.md).',
+			text: `No project control CLI or skill found (tools/control-*.ts, bin/control-*, .agents/skills/control-*/SKILL.md). Plan a rung 4 PR to build one: doctor, dev, login, request --contains, preview --pr, health --sha, browse --record, map --check ${guide}.`,
+			rung: 4,
+		})
+	} else if (!hasControlCli) {
+		findings.push({
+			text: `Control skill found but no project control CLI (tools/control-*.ts, bin/control-*, control-* package script). Plan a rung 4 PR to build the CLI ${guide}.`,
+			rung: 4,
+		})
+	} else if (!hasControlSkill) {
+		findings.push({
+			text: `Control CLI found but no control-<project> skill (.agents/skills/control-*/SKILL.md). Plan a rung 4 PR to add it ${guide}.`,
+			rung: 4,
+		})
+	}
+	if (!hasFeatureMap) {
+		findings.push({
+			text: `No Feature Map found (feature-catalog.*, feature-map*, skills/control-*/references/features/). Plan a rung 4 PR to add one with \`map --check\` in CI and a scheduled agent that keeps it fresh ${guide}.`,
 			rung: 4,
 		})
 	}

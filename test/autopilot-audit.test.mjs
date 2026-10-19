@@ -100,6 +100,7 @@ test('detect recognizes a rung 4 control CLI and its skill', (t) => {
 		'tools/control-app.ts': 'export {}\n',
 		'tools/control-app/feature-catalog.ts': 'export {}\n',
 		'.agents/skills/control-app/SKILL.md': '# control-app\n',
+		'.agents/skills/control-app/references/features/README.md': '# Map\n',
 	})
 	const result = detect(root)
 	const rung4 = result.rungs.find((r) => r.id === 4)
@@ -107,8 +108,17 @@ test('detect recognizes a rung 4 control CLI and its skill', (t) => {
 	assert.ok(rung4.evidence.includes('tools/control-app.ts'))
 	assert.ok(rung4.evidence.includes('.agents/skills/control-app/SKILL.md'))
 	assert.ok(rung4.evidence.includes('package.json#scripts.control-app'))
-	assert.ok(!rung4.evidence.includes('tools/control-app/feature-catalog.ts'))
-	assert.ok(rung4.checked.some((c) => /project control CLI or skill/.test(c)))
+	assert.ok(rung4.evidence.includes('tools/control-app/feature-catalog.ts'))
+	assert.deepEqual(
+		result.findings.filter((f) => f.rung === 4),
+		[],
+	)
+	for (const label of [
+		/^project control CLI/,
+		/^control skill/,
+		/^Feature Map/,
+	])
+		assert.ok(rung4.checked.some((c) => label.test(c)))
 	assert.equal(controlFinding(result), undefined)
 	const report = reportRungs.find((r) => r.id === 4)
 	assert.equal(report.name, rung4.name)
@@ -122,6 +132,29 @@ test('detect counts a control bin entry as rung 4 evidence', (t) => {
 	const rung4 = result.rungs.find((r) => r.id === 4)
 	assert.ok(rung4.evidence.includes('package.json#bin.control-cli'))
 	assert.equal(controlFinding(result), undefined)
+})
+
+test('detect checks the control CLI, skill, and Feature Map separately', (t) => {
+	const root = tempRepo(t, {
+		'package.json': JSON.stringify({
+			scripts: { control: 'node tools/control-app.ts' },
+		}),
+		'tools/control-app.ts': 'export {}\n',
+	})
+	const texts = detect(root)
+		.findings.filter((f) => f.rung === 4)
+		.map((f) => f.text)
+	assert.equal(texts.length, 2)
+	assert.match(texts[0], /Control CLI found but no control-<project> skill/)
+	assert.match(texts[1], /No Feature Map found.*map --check/)
+	const skillOnly = detect(
+		tempRepo(t, { '.agents/skills/control-app/SKILL.md': '# control-app\n' }),
+	).findings.filter((f) => f.rung === 4)
+	assert.ok(
+		skillOnly.some((f) =>
+			/Control skill found but no project control CLI/.test(f.text),
+		),
+	)
 })
 
 test('detect proposes a control CLI when rung 4 has none', (t) => {
