@@ -1,16 +1,28 @@
 import assert from 'node:assert/strict'
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import {
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	rmSync,
+	writeFileSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
 import {
+	dedupeFindings,
 	detect,
 	expandScript,
 	extractCiSteps,
+	formatCarryOver,
+	formatVerifyLine,
+	main as auditMain,
 	mergePrevious,
 	migrateRungIds,
 	rungs as detectRungs,
+	sameRepo,
 	scriptCalls,
+	usage as auditUsage,
 } from '../skills/autopilot/scripts/audit-detect.mjs'
 import {
 	main,
@@ -422,12 +434,229 @@ test('mergePrevious keeps judged fields when the detector re-runs', () => {
 			evidence: [],
 		})),
 	}
-	const merged = mergePrevious(next, previous)
+	const { result: merged, carry } = mergePrevious(next, previous)
 	assert.equal(merged.rungs[0].score, 'partial')
 	assert.equal(merged.rungs[0].notes, 'why 1')
 	assert.deepEqual(merged.rungs[0].evidence, ['AGENTS.md'])
-	assert.deepEqual(merged.verify.results, previous.verify.results)
+	assert.equal(merged.verify.results.length, 1)
+	assert.equal(merged.verify.results[0].command, 'npm run validate')
+	assert.equal(merged.verify.results[0].carriedOver, true)
 	assert.deepEqual(merged.plan, plan)
+	assert.deepEqual(carry.verifyNotRerun, ['npm run validate'])
+	assert.match(formatCarryOver(carry), /Verify commands not re-run/)
+})
+
+test('mergePrevious refuses a file from a different repo', () => {
+	const previous = validAudit({
+		repo: { name: 'other', path: '/tmp/other-repo' },
+		verify: {
+			results: [{ command: 'npm run validate', exitCode: 1, note: 'stale' }],
+		},
+	})
+	const next = {
+		...validAudit(),
+		repo: { name: 'app', path: '/tmp/app' },
+		verify: { results: [] },
+		findings: [],
+		rungs: validAudit().rungs.map((r) => ({
+			...r,
+			score: null,
+			notes: '',
+			evidence: [],
+		})),
+	}
+	const { result, carry, skipped } = mergePrevious(next, previous)
+	assert.equal(carry, null)
+	assert.equal(skipped.reason, 'different-repo')
+	assert.equal(result.verify.results.length, 0)
+	assert.equal(result.rungs[0].score, null)
+	assert.equal(sameRepo(next, previous), false)
+	assert.equal(
+		sameRepo(
+			{ repo: { name: 'app', path: '/tmp/app' } },
+			{ repo: { name: 'app', path: '/tmp/app' } },
+		),
+		true,
+	)
+})
+
+test('dedupeFindings collapses missing-path duplicates by file and ref', () => {
+	const findings = [
+		{
+			text: 'ci.yml:3 references server/register-hooks.mjs, which does not exist',
+			file: 'ci.yml',
+			ref: 'server/register-hooks.mjs',
+			rung: 1,
+		},
+		{
+			text: 'ci.yml:9 references server/register-hooks.mjs, which does not exist (deleted in abc)',
+			file: 'ci.yml',
+			ref: 'server/register-hooks.mjs',
+			rung: 1,
+		},
+		{
+			text: 'Dockerfile:2 references server/register-hooks.mjs, which does not exist',
+			file: 'Dockerfile',
+			ref: 'server/register-hooks.mjs',
+			rung: 7,
+		},
+		{ text: 'CI skips format', rung: 1 },
+		{ text: 'CI skips format', rung: 1 },
+	]
+	const deduped = dedupeFindings(findings)
+	assert.equal(deduped.length, 3)
+	assert.equal(deduped[0].file, 'ci.yml')
+	assert.equal(deduped[1].file, 'Dockerfile')
+	assert.equal(deduped[2].text, 'CI skips format')
+	const { result } = mergePrevious(
+		{
+			...validAudit(),
+			findings: [findings[0]],
+			verify: { results: [] },
+		},
+		validAudit({ findings: [findings[1], findings[3]] }),
+	)
+	assert.equal(result.findings.length, 2)
+})
+
+test('mergePrevious reports kept triage', () => {
+	const triage = {
+		system: 'labels',
+		priorities: ['P0', 'P1', 'P2', 'P3'],
+		decision: 'needs-decision',
+		existing: false,
+		evidence: 'interview',
+	}
+	const next = {
+		...validAudit(),
+		findings: [],
+		verify: { results: [] },
+		rungs: validAudit().rungs.map((r) => ({
+			...r,
+			score: null,
+			notes: '',
+			evidence: [],
+			checked: [],
+		})),
+	}
+	const previous = { ...next, triage }
+	const { result, carry } = mergePrevious(next, previous)
+	assert.deepEqual(result.triage, triage)
+	assert.equal(carry.triage, true)
+	assert.match(formatCarryOver(carry), /Kept previous triage/)
+})
+
+test('mergePrevious collapses a saved finding that has no ref into the detected one', () => {
+	const detected = {
+		text: 'ci.yml:3 references server/register-hooks.mjs, which does not exist',
+		file: 'ci.yml',
+		ref: 'server/register-hooks.mjs',
+		rung: 1,
+	}
+	const saved = { text: detected.text, file: 'ci.yml', rung: 1 }
+	const { result } = mergePrevious(
+		{ ...validAudit(), findings: [detected], verify: { results: [] } },
+		validAudit({ findings: [saved] }),
+	)
+	assert.deepEqual(result.findings, [detected])
+})
+
+test('formatVerifyLine skips missing durationMs and marks carried-over results', () => {
+	assert.equal(
+		formatVerifyLine({ command: 'npm run validate', exitCode: 1 }),
+		'npm run validate → exit 1',
+	)
+	assert.doesNotMatch(formatVerifyLine({ command: 'x', exitCode: 0 }), /NaN/)
+	assert.match(
+		formatVerifyLine({
+			command: 'npm run validate',
+			exitCode: 0,
+			durationMs: 1500,
+			carriedOver: true,
+		}),
+		/1\.5s.*carried over; not re-run/,
+	)
+})
+
+test('audit main exits 0 after a successful write even when verify failed', (t) => {
+	const root = tempRepo(t, {
+		'package.json': JSON.stringify({ scripts: { validate: 'false' } }),
+	})
+	const out = path.join(root, '.autopilot', 'before.json')
+	const logs = []
+	const status = auditMain(
+		[root, '--out', out, '--verify', 'false', '--timeout', '5'],
+		{ log: (line) => logs.push(line) },
+	)
+	assert.equal(status, 0)
+	const written = JSON.parse(readFileSync(out, 'utf8'))
+	assert.equal(written.verify.results[0].exitCode, 1)
+	assert.match(auditUsage, /Exit codes: 0 =/)
+	assert.doesNotMatch(logs.join('\n'), /NaN/)
+})
+
+test('audit main reports carry-over and does not merge another repo silently', (t) => {
+	const root = tempRepo(t, {
+		'package.json': JSON.stringify({ name: 'app' }),
+	})
+	const out = path.join(root, '.autopilot', 'before.json')
+	const firstLogs = []
+	assert.equal(
+		auditMain([root, '--out', out], { log: (line) => firstLogs.push(line) }),
+		0,
+	)
+	const first = JSON.parse(readFileSync(out, 'utf8'))
+	first.rungs[0].score = 'partial'
+	first.rungs[0].notes = 'why'
+	first.rungs[0].evidence = ['package.json']
+	first.verify.results = [
+		{ command: 'npm run validate', exitCode: 1, note: 'hand-written' },
+	]
+	first.findings = [
+		{
+			text: 'ci.yml:1 references gone.mjs, which does not exist',
+			file: 'ci.yml',
+			ref: 'gone.mjs',
+			rung: 1,
+		},
+		{
+			text: 'ci.yml:2 references gone.mjs, which does not exist (deleted)',
+			file: 'ci.yml',
+			ref: 'gone.mjs',
+			rung: 1,
+		},
+	]
+	writeFileSync(out, `${JSON.stringify(first, null, '\t')}\n`)
+
+	const rerunLogs = []
+	assert.equal(
+		auditMain([root, '--out', out], { log: (line) => rerunLogs.push(line) }),
+		0,
+	)
+	const rerunText = rerunLogs.join('\n')
+	assert.match(rerunText, /Carry-over from existing --out file/)
+	assert.match(rerunText, /Verify commands not re-run this time/)
+	assert.match(rerunText, /carried over; not re-run/)
+	const rerun = JSON.parse(readFileSync(out, 'utf8'))
+	assert.equal(rerun.rungs[0].score, 'partial')
+	assert.equal(rerun.verify.results[0].carriedOver, true)
+	assert.equal(rerun.findings.filter((f) => f.ref === 'gone.mjs').length, 1)
+
+	const other = tempRepo(t, {
+		'package.json': JSON.stringify({ name: 'other' }),
+	})
+	const foreignLogs = []
+	assert.equal(
+		auditMain([other, '--out', out], {
+			log: (line) => foreignLogs.push(line),
+		}),
+		0,
+	)
+	assert.match(foreignLogs.join('\n'), /Not merging .* Starting fresh/)
+	const fresh = JSON.parse(readFileSync(out, 'utf8'))
+	assert.equal(fresh.repo.name, path.basename(other))
+	assert.equal(fresh.rungs[0].score, null)
+	assert.equal(fresh.verify.results.length, 0)
 })
 
 test('validate accepts a complete audit and plan', () => {
@@ -602,6 +831,7 @@ test('main validates in every mode, writes HTML, and --json reports errors', () 
 
 test('re-running on a 12-rung audit moves Cleanup judgments to rungs 12 and 13', () => {
 	const old = {
+		repo: { name: 'app' },
 		rungs: [
 			...Array.from({ length: 10 }, (_, i) => ({
 				id: i + 1,
@@ -625,6 +855,7 @@ test('re-running on a 12-rung audit moves Cleanup judgments to rungs 12 and 13',
 	assert.equal(migrated.findings[0].rung, 12)
 	assert.equal(migrated.host.facts[0].rung, 12)
 	const next = {
+		repo: { name: 'app' },
 		findings: [],
 		verify: { results: [] },
 		stack: { summary: '' },
@@ -636,7 +867,7 @@ test('re-running on a 12-rung audit moves Cleanup judgments to rungs 12 and 13',
 			checked: [],
 		})),
 	}
-	const merged = mergePrevious(next, old)
+	const { result: merged } = mergePrevious(next, old)
 	assert.equal(merged.rungs.find((r) => r.id === 11).score, null)
 	assert.equal(merged.rungs.find((r) => r.id === 12).score, 'partial')
 	// A current 13-rung audit is left alone.

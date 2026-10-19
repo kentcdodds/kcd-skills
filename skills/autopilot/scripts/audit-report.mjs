@@ -376,16 +376,22 @@ const openQuestions = (audit) =>
 		.filter((rung) => rung.score === 'unknown')
 		.map((rung) => `Rung ${rung.id} (${rung.name}): ${rung.notes}`)
 
+function formatVerifyResult(r) {
+	const carried = r.carriedOver ? ' [carried over; not re-run]' : ''
+	if (r.skipped) return `${r.command} → skipped: ${r.skipped}${carried}`
+	const duration =
+		typeof r.durationMs === 'number'
+			? ` (${(r.durationMs / 1000).toFixed(1)}s)`
+			: ''
+	return `${r.command} → exit ${r.exitCode}${duration}${carried}`
+}
+
 export function triageLine(t) {
 	return `${t.priorities.join(' > ')} (${t.system}${t.tracker ? ` on ${t.tracker}` : ''}${t.existing ? ', existing' : ', adopted default'}); decision marker ${t.decision} (${t.evidence})`
 }
 
 export function renderText(audit, before) {
-	const verify = audit.verify.results.map((r) =>
-		r.skipped
-			? `${r.command} → skipped: ${r.skipped}`
-			: `${r.command} → exit ${r.exitCode}${r.durationMs ? ` (${(r.durationMs / 1000).toFixed(1)}s)` : ''}`,
-	)
+	const verify = audit.verify.results.map(formatVerifyResult)
 	const lines = [
 		`Autopilot audit: ${audit.repo.name}${audit.repo.commit ? ` @ ${audit.repo.commit}` : ''}${before ? ' (before → after)' : ''}`,
 		`Stack: ${audit.stack.summary}`,
@@ -498,11 +504,7 @@ export function renderHtml(audit, before) {
 		.join('\n')
 	const list = (items) =>
 		`<ul>${items.map((item) => `<li>${html(item)}</li>`).join('')}</ul>`
-	const verify = audit.verify.results.map((r) =>
-		r.skipped
-			? `${r.command} → skipped: ${r.skipped}`
-			: `${r.command} → exit ${r.exitCode}`,
-	)
+	const verify = audit.verify.results.map(formatVerifyResult)
 	const plan = planRows(audit)
 	const questions = openQuestions(audit)
 	return `<!doctype html>
