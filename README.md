@@ -76,7 +76,8 @@ commits and publishes to npm with trusted publishing.
 - `review-and-recommend` presents decision options with effort, then recommends
   one path and names the right fix.
 - `visual-recap` creates and maintains a visual system recap in a pull request.
-- `ship-pr` iterates on CI and review feedback until a pull request is ready.
+- `ship-pr` shepherds a pull request to merged or parked with the Kody
+  `@kentcdodds/ship-pr` package (`tick`, act, tick again).
 - `file-friction` files durable papercuts as prioritized `friction` issues
   (through the Kody `@kentcdodds/friction-log` package, or the repo's friction
   form).

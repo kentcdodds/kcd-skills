@@ -1,88 +1,61 @@
 ---
 name: ship-pr
 description: >
-  Babysit a PR. Iterate with AI reviewers and CI. Get it ready and maybe merge.
-  Send summary message.
+  Babysit a PR to done with the @kentcdodds/ship-pr Kody package: tick the PR,
+  read the focused step, fix / reply / decide, and tick again until done (merge
+  or park, deploy, leftover friction, summary). Use when a pull request needs to
+  be shepherded to done.
 ---
 
 # Ship PR
 
-Run the Kody snippets below with **CLI local execute** when Node ≥ 22 is
-available — auth via provisioned `KODY_API_TOKEN` (Cloud Agents / CI) or
-`kody login` (interactive); see `/prefer-local-kody-execute`. Hosted MCP
-`execute` is the fallback.
+When a pull request needs to be shepherded to done. The loop is the Kody package
+[`@kentcdodds/ship-pr`](https://kody.codes/@kentcdodds/ship-pr)
+(`search({ entity: "package:@kentcdodds/ship-pr" })`). Its `tick` export reports
+where the PR stands and the one step to focus on; you act and tick again.
+Without Kody, `npx kcd-skills@latest autopilot ship-pr` runs the same loop.
 
-## AI reviewers
+Pass `risk` on every tick. User policy overrides.
 
-Prefer Cursor Bugbot. Never comment `bugbot run` or `cursor review` yourself
-(kody-bot cannot trigger BugBot). Trigger with `kody:@kentcdodds/bugbot` using
-`{ prUrl }` or `{ owner, repo, prNumber }`. Do not pass a GitHub account.
+- **low:** green CI. AI review is optional.
+- **medium:** wait for Bugbot. Handle valid feedback. When `triggerBugbot`
+  returns `github_account_mismatch`, continue with CI alone; Bugbot will not
+  review that PR.
+- **high:** also wait for CodeRabbit and Devin. Park unless `mergeAuthority` is
+  true.
 
-```javascript
-import triggerBugbot from 'kody:@kentcdodds/bugbot'
-await triggerBugbot({ prUrl })
-```
+Credential setup is
+[prefer-local-kody-execute](../prefer-local-kody-execute/SKILL.md).
 
-## Loop
+## Command
 
-1. Mark ready — `kody:@kentcdodds/github/pr/set-review-status` with
-   `{ prUrl, status: 'ready' }`, or `{ owner, repo, prNumber, status: 'ready' }`
-2. Wait for CI — `gh pr checks` (compose `loop-on-ci`, `fix-ci`)
-3. Fix failures; address valid AI-reviewer feedback (ignore insignificant nits /
-   already-fixed / wrong); check mergability with base branch and rebase if
-   needed
-4. Green and no valid feedback left → break
-5. Push → repeat
-
-## Merge and Deploy if requested or the change is low risk
-
-Squash and merge PR as Kody with `kody:@kentcdodds/github/pr/merge` using
-`{ prUrl, mergeMethod: 'squash' }` (or `{ owner, repo, prNumber, ... }`;
-optional `commitTitle`), watch CI deploy. Relevant links for the discord message
-include: agent, PR, CI job, and relevant deployment page(s).
-
-Other useful exports on the same package: `pr/get-checks` for check-run status
-without `gh`, and `request` / `graphql` (`kody:@kentcdodds/github/request`,
-`kody:@kentcdodds/github/graphql`) for one-off authenticated GitHub calls.
-
-## Done → Discord
-
-Always summarize (merged or not) by calling
-`kody:@kentcdodds/discord/send-shipped-pr` with structured fields. Do **not**
-use raw `post-message` and do **not** compute or guess token cost — the export
-fetches the billed Cursor Cloud Agent usage and formats the cost line.
-
-**agentId (required):**
-
-- In a Cursor Cloud Agent VM, read it from the metadata socket: curl -fsS
-  --unix-socket "${CURSOR_AGENT_SOCKET:-/run/cursor/api.sock}"
-  http://cursor-agent/v1/meta-data/agent/id
-- Otherwise pass the `bc-` id from the agent URL you were launched as
-  (https://cursor.com/agents/{id}).
-
-**title:** a human headline of the change, not `ship owner/repo#N` (repo and PR
-already have links). Example:
-`OpenAPI spec fetches now count against daily quota`.
-
-**difficulty (always set):** `'Easy' | 'Medium' | 'Hard'`. Distinct from merge
-risk. Easy = small/localized; Medium = several files or real behavior change;
-Hard = architecture, migrations, subtle correctness, or wide blast radius.
+Run each export through a one-line static import; `exampleInvokes` in tick
+output already uses this form. The first tick is full. Re-ticks pass
+`brief: true`.
 
 ```bash
-npx @kodycodes/cli execute --local --code '
-import sendShippedPr from "kody:@kentcdodds/discord/send-shipped-pr"
-
-export default async function main() {
-	return sendShippedPr({
-		agentId, // bc- id from the metadata socket or launch URL
-		title: "OpenAPI spec fetches now count against daily quota",
-		difficulty: "Easy", // or "Medium" | "Hard"
-		summary: "What shipped / parked / blocked and why.",
-		prUrl: "https://github.com/owner/repo/pull/1",
-		repo: "owner/repo",
-		extras: ["CI green", "preview verified"],
-		status: "Shipped", // or "Parked" | "Blocked"
-	})
-}
-'
+npx @kodycodes/cli execute --local \
+  --code 'import run from "kody:@kentcdodds/ship-pr/tick"; export default (p) => run(p)' \
+  --params '{"prUrl":"https://github.com/owner/repo/pull/123","risk":"medium","applySafeAutomations":true}'
 ```
+
+## Acting on a tick
+
+- `exit.status` is `waiting`: end the turn with a wake armed. Subscribe to CI
+  when waiting on CI, and always set a one-shot timer from `exit.wakeHints`
+  (name, `delaySeconds`, `prompt`); a CI subscription alone can miss its
+  delivery. On wake, re-tick and re-arm from the new `exit.wakeHints` while it
+  still says `waiting`. Soak, parity, and calendar gates work the same way.
+- A valid finding: fix, push, and `./reply-review` with `Fixed in <sha>: ...`.
+- A check or finding you will not fix: `./decide` with a reason (`ignored`,
+  `skipped`, `wontfix`, or `accepted`).
+- Focus `merge`: `./merge`. Focus `friction`:
+  [file-friction](../file-friction/SKILL.md). Focus `report`: the printed
+  `./send-summary`, with `agentId` and `model` from your agent runtime (omit
+  `model` when it has none) and verified deployed page links in `extras`.
+- Medium or high risk: prove the change locally with the project's control CLI
+  or skill before merge, and use a PR preview when local cannot exercise it.
+  Non-trivial PR descriptions carry a system recap
+  ([visual-recap](../visual-recap/SKILL.md)).
+- Scrutinize test-expectation changes made in the same PR as the code they test;
+  each one needs a reason from the intended behavior.
