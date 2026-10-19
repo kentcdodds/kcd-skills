@@ -147,6 +147,30 @@ test('detect checks the control CLI, skill, and Feature Map separately', (t) => 
 	assert.equal(texts.length, 2)
 	assert.match(texts[0], /Control CLI found but no control-<project> skill/)
 	assert.match(texts[1], /No Feature Map found.*map --check/)
+	const lookalikes = detect(
+		tempRepo(t, {
+			'tools/control-app.ts': 'export {}\n',
+			'.agents/skills/control-app/SKILL.md': '# control-app\n',
+			'app/components/FeatureMap.tsx': 'export {}\n',
+			'app/feature-mapping.ts': 'export {}\n',
+		}),
+	)
+	assert.ok(
+		lookalikes.findings.some(
+			(f) => f.rung === 4 && /No Feature Map found/.test(f.text),
+		),
+	)
+	const mapJson = detect(
+		tempRepo(t, {
+			'tools/control-app.ts': 'export {}\n',
+			'.agents/skills/control-app/SKILL.md': '# control-app\n',
+			'docs/feature-map.json': '{}\n',
+		}),
+	)
+	assert.deepEqual(
+		mapJson.findings.filter((f) => f.rung === 4),
+		[],
+	)
 	const skillOnly = detect(
 		tempRepo(t, { '.agents/skills/control-app/SKILL.md': '# control-app\n' }),
 	).findings.filter((f) => f.rung === 4)

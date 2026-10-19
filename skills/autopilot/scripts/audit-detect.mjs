@@ -51,7 +51,7 @@ const controlCliPathPattern =
 const controlSkillPathPattern =
 	/^\.(agents|cursor|claude|codex)\/skills\/control-[^/]+\/SKILL\.md$/i
 const featureMapPathPattern =
-	/(^|\/)feature[-_]?(catalog|map)[^/]*\.[a-z]+$|^\.(agents|cursor|claude|codex)\/skills\/control-[^/]+\/references\/features\/README\.md$/i
+	/(^|\/)feature[-_](catalog|map)\.[a-z]+$|^\.(agents|cursor|claude|codex)\/skills\/control-[^/]+\/references\/features\/README\.md$/i
 const controlScriptPattern = /^control([-:_]|$)/i
 
 // Per rung: [label, path regex] pairs. A match becomes evidence.
@@ -92,7 +92,7 @@ const pathRules = {
 			controlSkillPathPattern,
 		],
 		[
-			'Feature Map (feature-catalog.*, feature-map*, skills/control-*/references/features/README.md)',
+			'Feature Map (feature-catalog.*, feature-map.*, skills/control-*/references/features/README.md)',
 			featureMapPathPattern,
 		],
 	],
@@ -621,7 +621,7 @@ export function detect(root, { verify = [], timeout = 900 } = {}) {
 	}
 	if (!hasFeatureMap) {
 		findings.push({
-			text: `No Feature Map found (feature-catalog.*, feature-map*, skills/control-*/references/features/). Plan a rung 4 PR to add one with \`map --check\` in CI and a scheduled agent that keeps it fresh ${guide}.`,
+			text: `No Feature Map found (feature-catalog.*, feature-map.*, skills/control-*/references/features/). Plan a rung 4 PR to add one with \`map --check\` in CI and a scheduled agent that keeps it fresh ${guide}.`,
 			rung: 4,
 		})
 	}
