@@ -81,7 +81,7 @@ This file is a map. Open the page that owns the task:
 - Architecture and primitives: <link>
 - Decisions (read before proposing big changes): <link>
 - Shipping a PR: <link to ship-pr skill>
-- Filing friction: <link to file-friction skill>
+- Filing friction: <link to friction-log skill>
 ```
 
 Link the pages and skills agents use for each task.

@@ -26,7 +26,7 @@ Or install one:
 npx skills add kentcdodds/kcd-skills --skill review-and-recommend
 npx skills add kentcdodds/kcd-skills --skill visual-recap
 npx skills add kentcdodds/kcd-skills --skill ship-pr
-npx skills add kentcdodds/kcd-skills --skill file-friction
+npx skills add kentcdodds/kcd-skills --skill friction-log
 npx skills add kentcdodds/kcd-skills --skill prefer-local-kody-execute
 ```
 
@@ -78,7 +78,7 @@ commits and publishes to npm with trusted publishing.
 - `visual-recap` creates and maintains a visual system recap in a pull request.
 - `ship-pr` shepherds a pull request to merged or parked with the Kody
   `@kentcdodds/ship-pr` package (`tick`, act, tick again).
-- `file-friction` files durable papercuts as prioritized `friction` issues
+- `friction-log` files durable papercuts as prioritized `friction` issues
   (through the Kody `@kentcdodds/friction-log` package, or the repo's friction
   form).
 - `prefer-local-kody-execute` prefers `@kodycodes/cli execute --local` over

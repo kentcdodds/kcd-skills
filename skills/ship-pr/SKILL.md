@@ -50,7 +50,7 @@ npx @kodycodes/cli execute --local \
 - A check or finding you will not fix: `./decide` with a reason (`ignored`,
   `skipped`, `wontfix`, or `accepted`).
 - Focus `merge`: `./merge`. Focus `friction`:
-  [file-friction](../file-friction/SKILL.md). Focus `report`: the printed
+  [friction-log](../friction-log/SKILL.md). Focus `report`: the printed
   `./send-summary`, with `agentId` and `model` from your agent runtime (omit
   `model` when it has none) and verified deployed page links in `extras`.
 - Medium or high risk: prove the change locally with the project's control CLI
