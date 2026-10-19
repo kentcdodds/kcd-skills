@@ -52,6 +52,8 @@ npx kcd-skills@latest autopilot score .autopilot/before.json 1 partial --evidenc
 npx kcd-skills@latest autopilot finding .autopilot/before.json "text" --rung 1
 npx kcd-skills@latest autopilot host request # JSON on stdout; tips on stderr
 npx kcd-skills@latest autopilot host .autopilot/before.json --input facts.json
+npx kcd-skills@latest autopilot triage request # the priority + decision setup
+npx kcd-skills@latest autopilot triage .autopilot/before.json --input triage.json
 npx kcd-skills@latest autopilot plan add .autopilot/before.json 1 --title "..." --file AGENTS.md --effort S --door two-way
 npx kcd-skills@latest autopilot report .autopilot/before.json --html .autopilot/before.html
 npx kcd-skills@latest autopilot ship-pr --input state.json --risk low --json

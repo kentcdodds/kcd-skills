@@ -43,7 +43,14 @@ function tempDir(t) {
 test('help lists skills and autopilot commands', () => {
 	const result = cli(['--help'])
 	assert.equal(result.status, 0)
-	for (const command of ['audit', 'score', 'host', 'report', 'ship-pr']) {
+	for (const command of [
+		'audit',
+		'score',
+		'host',
+		'triage',
+		'report',
+		'ship-pr',
+	]) {
 		assert.match(result.stdout, new RegExp(`autopilot ${command} `))
 	}
 	assert.match(result.stdout, /visual-recap/)
@@ -229,6 +236,87 @@ test('each edit command --help lists that command options only', () => {
 	assert.equal(audit.status, 0)
 	assert.match(audit.stdout, /Exit codes: 0 =/)
 	assert.match(audit.stdout, /\.autopilot\/before\.json/)
+})
+
+test('triage records the team priority scheme; rungs run 1-13', (t) => {
+	const dir = tempDir(t)
+	const file = path.join(dir, 'audit.json')
+	assert.equal(cli(['autopilot', 'audit', repo, '--out', file]).status, 0)
+	const request = cli(['autopilot', 'triage', 'request'])
+	assert.equal(request.status, 0)
+	assert.match(request.stdout, /"priorities": \["P0", "P1", "P2", "P3"\]/)
+	assert.match(request.stdout, /needs-decision/)
+	const bad = cli(['autopilot', 'triage', file, '--input', '-'], {
+		input: JSON.stringify({ system: 'labels', priorities: ['P0'] }),
+	})
+	assert.equal(bad.status, 1)
+	assert.match(bad.stderr, /priorities must list at least two values/)
+	const linear = {
+		system: 'tracker-field',
+		tracker: 'linear',
+		priorities: ['Urgent', 'High', 'Medium', 'Low'],
+		decision: 'Needs decision',
+		existing: true,
+		evidence: 'interview',
+	}
+	const ok = cli(['autopilot', 'triage', file, '--input', '-'], {
+		input: JSON.stringify(linear),
+	})
+	assert.equal(ok.status, 0, ok.stderr)
+	assert.match(ok.stdout, /Urgent > High > Medium > Low/)
+	assert.equal(
+		cli([
+			'autopilot',
+			'score',
+			file,
+			'11',
+			'partial',
+			'--evidence',
+			'interview',
+			'--note',
+			'labels exist, not applied',
+		]).status,
+		0,
+	)
+	assert.equal(
+		cli([
+			'autopilot',
+			'score',
+			file,
+			'13',
+			'missing',
+			'--checked',
+			'CI schedules',
+		]).status,
+		0,
+	)
+	const tooHigh = cli(['autopilot', 'score', file, '14', 'done'])
+	assert.equal(tooHigh.status, 1)
+	assert.match(tooHigh.stderr, /rung must be 1-13/)
+	const audit = JSON.parse(readFileSync(file, 'utf8'))
+	assert.equal(audit.rungs.length, 13)
+	assert.deepEqual(audit.triage, linear)
+	for (const rung of audit.rungs.filter((r) => r.score === null)) {
+		rung.score = 'n/a'
+		rung.notes = 'not scored in this test'
+	}
+	audit.verify.results = [{ command: 'npm test', exitCode: 0 }]
+	writeFileSync(file, JSON.stringify(audit))
+	const report = cli(['autopilot', 'report', file])
+	assert.equal(report.status, 0, report.stderr)
+	assert.match(
+		report.stdout,
+		/11\. Triage: priority \+ decision marker +partial/,
+	)
+	assert.match(report.stdout, /12\. Cleanup issues/)
+	assert.match(report.stdout, /13\. Signals \+ cleanup cron agents +missing/)
+	assert.match(
+		report.stdout,
+		/Triage: Urgent > High > Medium > Low \(tracker-field on linear, existing\); decision marker Needs decision/,
+	)
+	// A re-run keeps the triage answers.
+	assert.equal(cli(['autopilot', 'audit', repo, '--out', file]).status, 0)
+	assert.deepEqual(JSON.parse(readFileSync(file, 'utf8')).triage, linear)
 })
 
 test('audit edits report only problems with what they touched', () => {

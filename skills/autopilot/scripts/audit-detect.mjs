@@ -33,8 +33,9 @@ export const rungs = [
 	{ id: 8, pillar: 'blast-radius', name: 'Flags + rollback runbook' },
 	{ id: 9, pillar: 'blast-radius', name: 'Backups + tested restore' },
 	{ id: 10, pillar: 'improve', name: 'Friction form' },
-	{ id: 11, pillar: 'improve', name: 'Cleanup issues' },
-	{ id: 12, pillar: 'improve', name: 'Signals + cleanup cron agents' },
+	{ id: 11, pillar: 'improve', name: 'Triage: priority + decision marker' },
+	{ id: 12, pillar: 'improve', name: 'Cleanup issues' },
+	{ id: 13, pillar: 'improve', name: 'Signals + cleanup cron agents' },
 ]
 
 const ignoredDirs = new Set([
@@ -145,11 +146,17 @@ const pathRules = {
 	],
 	11: [
 		[
+			'label or triage config (labels.yml, triage workflow)',
+			/^\.github\/labels\.ya?ml$|(^|\/)\.?labels\.(ya?ml|json)$|^\.github\/workflows\/[^/]*(triage|priorit)[^/]*\.ya?ml$/i,
+		],
+	],
+	12: [
+		[
 			'cleanup issue form (ISSUE_TEMPLATE/*cleanup*)',
 			/^\.github\/ISSUE_TEMPLATE\/[^/]*cleanup[^/]*$|^\.gitlab\/issue_templates\/[^/]*cleanup/i,
 		],
 	],
-	12: [
+	13: [
 		[
 			'dependency or signal bot (dependabot, renovate, sentry config)',
 			/^\.github\/dependabot\.ya?ml$|(^|\/)renovate\.json5?$|^\.sentryclirc$|(^|\/)sentry\.[^/]+\.[cm]?[jt]s$/i,
@@ -167,19 +174,20 @@ const docRules = {
 	7: /\bpreview\b|\bstaging\b|\bdeploy/i,
 	8: /feature[- ]flags?|\brollback\b|roll back/i,
 	9: /\bbackups?\b|\brestore\b/i,
-	12: /\bcron\b|\bsentry\b|\balerts?\b|legacy[- ]reaper|friction[- ]sweep|docs?[- ]freshness|keep-tests-tight|test[- ]pruning|errors?(-to-| (→|->|to) )issues|codebase-cleanup/i,
+	11: /\bneeds-decision\b|\bP[0-3]\b.{0,40}\bpriorit|\bpriority (labels?|field)\b|\btriage\b/i,
+	13: /\bcron\b|\bsentry\b|\balerts?\b|legacy[- ]reaper|friction[- ]sweep|docs?[- ]freshness|keep-tests-tight|test[- ]pruning|errors?(-to-| (→|->|to) )issues|codebase-cleanup/i,
 }
 
 const depLabels = {
 	4: 'e2e dependency (playwright, cypress, puppeteer, webdriverio)',
 	8: 'flag dependency (LaunchDarkly, Unleash, GrowthBook, OpenFeature, PostHog, ...)',
-	12: 'error or telemetry dependency (Sentry, Bugsnag, Rollbar, OpenTelemetry, ...)',
+	13: 'error or telemetry dependency (Sentry, Bugsnag, Rollbar, OpenTelemetry, ...)',
 }
 
 const depRules = {
 	4: /^(@playwright\/test|playwright|cypress|puppeteer|webdriverio)$/,
 	8: /launchdarkly|unleash|flagsmith|growthbook|openfeature|statsig|posthog|configcat|@vercel\/flags|flipt|@splitsoftware/i,
-	12: /^@sentry\/|^sentry-sdk$|bugsnag|rollbar|honeybadger|dd-trace|newrelic|@opentelemetry\//i,
+	13: /^@sentry\/|^sentry-sdk$|bugsnag|rollbar|honeybadger|dd-trace|newrelic|@opentelemetry\//i,
 }
 
 const manifests = [
@@ -502,8 +510,8 @@ export function detect(root, { verify = [], timeout = 900 } = {}) {
 		text.split(/\r?\n/).forEach((line, index) => {
 			const cron = line.match(/cron:\s*['"]?([^'"#]+)/)
 			if (cron) {
-				evidence[12].add(file)
-				hints[12].push(`${file}:${index + 1} schedule "${cron[1].trim()}"`)
+				evidence[13].add(file)
+				hints[13].push(`${file}:${index + 1} schedule "${cron[1].trim()}"`)
 			}
 			if (/\bpreview\b/i.test(line))
 				hints[7].push(`${file}:${index + 1} mentions preview`)
@@ -694,13 +702,13 @@ export function detect(root, { verify = [], timeout = 900 } = {}) {
 			`${file} has [${has.join(', ')}], lacks [${lacks.join(', ')}]`,
 		)
 		if (has.includes('Cleanup')) {
-			evidence[11].add(file)
+			evidence[12].add(file)
 		} else {
-			hints[11].push(`${file} has no Cleanup field`)
+			hints[12].push(`${file} has no Cleanup field`)
 		}
 	}
-	checked[11].push('PR template Cleanup field')
-	checked[12].push('CI schedules (cron:)')
+	checked[12].push('PR template Cleanup field')
+	checked[13].push('CI schedules (cron:)')
 
 	// Ship loop: deterministic script or config present?
 	const shipScript = [...evidence[6]].some((f) =>
@@ -726,6 +734,9 @@ export function detect(root, { verify = [], timeout = 900 } = {}) {
 			: 'no issue templates',
 	)
 	hints[11].push(
+		'the priority scheme and decision marker live in the tracker: record them with kcd-skills autopilot triage',
+	)
+	hints[12].push(
 		'labels and open Cleanup issues live in the tracker: check there or mark inferred',
 	)
 	hints[10].push(
@@ -835,10 +846,43 @@ export function formatCarryOver(carry) {
 	return lines.join('\n')
 }
 
+// Audits written before rung 11 (Triage) existed have 12 rungs, with Cleanup
+// issues at 11 and cleanup cron agents at 12. Shift those to 12 and 13.
+export function migrateRungIds(audit) {
+	const cleanup = audit?.rungs?.find((r) => r?.id === 11)
+	if (
+		!Array.isArray(audit?.rungs) ||
+		audit.rungs.length !== 12 ||
+		!/^cleanup issues$/i.test(cleanup?.name ?? '')
+	) {
+		return audit
+	}
+	const shift = (id) => (id === 11 || id === 12 ? id + 1 : id)
+	const shiftRows = (rows) =>
+		Array.isArray(rows)
+			? rows.map((row) =>
+					row && typeof row.rung === 'number'
+						? { ...row, rung: shift(row.rung) }
+						: row,
+				)
+			: rows
+	return {
+		...audit,
+		rungs: audit.rungs.map((rung) => ({ ...rung, id: shift(rung.id) })),
+		...(audit.plan ? { plan: shiftRows(audit.plan) } : {}),
+		...(audit.prs ? { prs: shiftRows(audit.prs) } : {}),
+		...(audit.findings ? { findings: shiftRows(audit.findings) } : {}),
+		...(audit.host?.facts
+			? { host: { ...audit.host, facts: shiftRows(audit.host.facts) } }
+			: {}),
+	}
+}
+
 // Keep agent-judged fields from a previous run of the same repo's file.
 // Returns { result, carry, skipped }. carry lists what was kept; skipped is set
 // when the existing file belongs to a different repo (no merge).
 export function mergePrevious(next, previous) {
+	previous = migrateRungIds(previous)
 	if (!previous?.rungs) return { result: next, carry: null, skipped: null }
 	if (!sameRepo(next, previous)) {
 		return {
@@ -900,6 +944,7 @@ export function mergePrevious(next, previous) {
 		...keepRows('prs'),
 		...keepRows('interview'),
 		...keepRows('host'),
+		...keepRows('triage'),
 		stack: {
 			...next.stack,
 			summary: previous.stack?.summary || next.stack.summary,
