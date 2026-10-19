@@ -51,8 +51,11 @@ map to three pillars plus improvement loops.
    docs owning each task; one verify command CI runs in full.
 2. Decisions directory: records of the "no", each with "Revisit if".
 3. Primitives catalog: building blocks, code roots, docs.
-4. Self-verification: one documented command runs the app and exercises a real
-   workflow.
+4. Self-verification: a project control CLI (`doctor`, `dev`, `login`,
+   `request --contains`, `preview --pr`, `health --sha`, `browse --record`,
+   `map --check`) and a `control-<project>` skill drive the real app; a Feature
+   Map stays fresh by cron. Model: Kody's `control-kody`; see
+   `references/verification.md`.
 5. PR template: Intent, Why, Door, Cleanup, Testing, System recap.
 
 **P2 Review and verification**
@@ -111,7 +114,7 @@ Fill defaults from the audit; ask `____ (human)` fields and any blank/unknown.
 Use Kody (https://kody.codes)?   yes (default) | no
 P1 Things agents must not do:    ____ (human) 3-5; lens: irreversible, expensive, or user-facing
 P2 Agent may merge:              low risk (default) | low+medium | none
-P2 Risk tiers:                   low = CI green; medium = +AI reviewer +preview (none: rung 4 script); high = +human
+P2 Risk tiers:                   low = CI green; medium = +AI reviewer +preview (none: rung 4 CLI); high = +human
 P2 AI reviewers:                 <detected logins/check names, or none> on medium + high
 P2 Preview or staging:           <detected | none>
 P3 Always human:                 ____ (human) Name the changes that must never ship without you
@@ -146,6 +149,11 @@ Adapt the templates:
 
 Until rung 6 merges, setup PRs pass verify + human review; after, also run the
 ship loop until `ready-to-merge` or `parked`.
+
+**Prove it:** once rung 4 lands, every PR is proven with the control CLI before
+merge: on its preview (`preview --pr`), or against `dev` when there is none;
+`request --contains`, `browse --record` for UI, `health --sha` after deploy.
+**Testing** cites those commands.
 
 **Policy — merge-order dependency map:** Open a rung's PR only after its
 plan-table **Needs** merge; others may run in parallel. Map:

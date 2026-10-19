@@ -18,7 +18,12 @@ export const rungs = [
 	},
 	{ id: 2, pillar: 'good-prs', name: 'Decisions directory', needs: [1] },
 	{ id: 3, pillar: 'good-prs', name: 'Primitives catalog', needs: [1] },
-	{ id: 4, pillar: 'good-prs', name: 'Self-verification script', needs: [1] },
+	{
+		id: 4,
+		pillar: 'good-prs',
+		name: 'Self-verification: control CLI + skill',
+		needs: [1],
+	},
 	{ id: 5, pillar: 'good-prs', name: 'PR template', needs: [1] },
 	{ id: 6, pillar: 'review', name: 'Ship loop', needs: [1, 5] },
 	{
