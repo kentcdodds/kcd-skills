@@ -54,7 +54,37 @@ test('help lists skills and autopilot commands', () => {
 		assert.match(result.stdout, new RegExp(`autopilot ${command} `))
 	}
 	assert.match(result.stdout, /visual-recap/)
+	assert.match(
+		result.stdout,
+		/\n  file-friction\n    File durable repo or package papercuts/,
+	)
 	assert.equal(cli(['--version']).stdout.trim(), pkg.version)
+})
+
+test('every skill prints its instructions and help', () => {
+	for (const skill of [
+		'autopilot',
+		'file-friction',
+		'prefer-local-kody-execute',
+		'review-and-recommend',
+		'ship-pr',
+		'visual-recap',
+	]) {
+		const text = readFileSync(
+			path.join(repo, 'skills', skill, 'SKILL.md'),
+			'utf8',
+		)
+		assert.match(text, new RegExp(`^---\\nname: ${skill}\\n`))
+		const printed = cli([skill])
+		assert.equal(printed.status, 0, printed.stderr)
+		assert.equal(
+			printed.stdout,
+			`<!-- kcd-skills@${pkg.version} ${skill} -->\n${text}`,
+		)
+		const help = cli([skill, '--help'])
+		assert.equal(help.status, 0, help.stderr)
+		assert.match(help.stdout, new RegExp(`^kcd-skills \\S+ ${skill}\\n\\S`))
+	}
 })
 
 test('a skill with no command prints its instructions for this version', () => {
