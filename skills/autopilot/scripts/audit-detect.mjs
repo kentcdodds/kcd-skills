@@ -621,7 +621,7 @@ export function detect(root, { verify = [], timeout = 900 } = {}) {
 	}
 	if (!hasFeatureMap) {
 		findings.push({
-			text: `No Feature Map found (feature-catalog.*, feature-map.*, skills/control-*/references/features/). Plan a rung 4 PR to generate one from the framework's route list, with seed-and-reach notes per page and \`map --check\` in CI ${guide}.`,
+			text: `No Feature Map found (feature-catalog.*, feature-map.*, skills/control-*/references/features/). For an app with routes, plan a rung 4 PR to generate one from the framework's route list, with seed-and-reach notes per page and \`map --check\` in CI; projects without routes skip it ${guide}.`,
 			rung: 4,
 		})
 	}
