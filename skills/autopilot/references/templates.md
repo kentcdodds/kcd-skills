@@ -1,7 +1,7 @@
 # Templates
 
 Starting points for the autopilot skill. Rename sections, paths, labels, and
-commands to fit the repo. Remove what does not apply.
+commands to fit the repo. Keep what applies.
 
 ## Audit JSON
 
@@ -13,11 +13,11 @@ validates and renders it (`--json` prints `{ ok, errors, summary }` only).
 	"schemaVersion": 1,
 	"repo": { "name": "app", "commit": "abc1234" },
 	"stack": {
-		"summary": "node (pnpm) · next, vitest",
+		"summary": "python (uv) · django, pytest",
 		"evidence": ["package.json"],
 	},
 	// Each command you ran (exitCode), or { "command", "skipped": "<reason>" }.
-	"verify": { "results": [{ "command": "pnpm run verify", "exitCode": 0 }] },
+	"verify": { "results": [{ "command": "make verify", "exitCode": 0 }] },
 	// Deterministic findings from the detector plus your own.
 	"findings": [{ "text": "CI skips format check", "rung": 1 }],
 	"rungs": [
@@ -72,7 +72,7 @@ Needs that are done or `n/a` drop out.
 `<verify command>` is the single local gate. CI runs the same command. Commit
 and pre-push hooks run lint, format, typecheck, and dead-code checks.
 
-This file is a map, not the docs. Open the page that owns the task:
+This file is a map. Open the page that owns the task:
 
 - Contributing and setup: <link>
 - Architecture and primitives: <link>
@@ -81,8 +81,7 @@ This file is a map, not the docs. Open the page that owns the task:
 - Filing friction: <link>
 ```
 
-Link only pages agents actually use, and only skills they load on demand; a
-"load these skills first" line gets ignored. Drop any link agents never cite.
+Link the pages and skills agents use for each task.
 
 ## PR template
 
@@ -102,7 +101,7 @@ Cleanup: <none | needed (#issue) | done>
 
 <Commands run and their result: tests and typecheck, then the control CLI proof
 (e.g. `control-<project> request GET /x --contains Y`,
-`execute --code-file fixture.ts`, `browse --record` video for UI;
+`execute --code-file <fixture>`, `browse --record` video for UI;
 `preview --pr 42` only for production-like changes). What data you used. Why any
 test expectation changed. Say what you could not verify.>
 
@@ -166,20 +165,19 @@ body:
 ```
 
 Quality bar: durable (still true tomorrow), recurring, reproducible, has a clear
-owner in this repo. One papercut per issue. Search open issues first. Never
-include secrets or private data. Not friction: one-off confusion, a nit about
-one session, speculation.
+owner in this repo. One papercut per issue. Search open issues first. Keep
+secrets and private data out.
 
 ## Kody yes / no
 
 **Kody yes** ([connect](https://kody.codes/docs/connect-your-agent.md);
-[secrets](https://kody.codes/docs/secrets.md) agents never read,
+[secrets](https://kody.codes/docs/secrets.md) agents use by name,
 [jobs](https://kody.codes/docs/triggers.md) for cron agents):
 [`@kentcdodds/ship-pr`](https://kody.codes/@kentcdodds/ship-pr) (`tick`) and
 [`@kentcdodds/friction-log`](https://kody.codes/@kentcdodds/friction-log) are
 **Kent's defaults** (Bugbot/CodeRabbit/Devin/Seer review sort, Discord summary,
 daily [`kody-hq/kody`](https://github.com/kody-hq/kody) sweep): a template to
-fork and reconfigure for your stack, not the only way.
+fork and reconfigure for your stack.
 
 **Kody no:**
 `curl -fsSL https://raw.githubusercontent.com/kentcdodds/kcd-skills/main/skills/autopilot/scripts/ship-pr.mjs -o scripts/ship-pr.mjs`
@@ -193,16 +191,16 @@ one opens a PR (one per run, none when there is nothing to do; errors → issues
 files the issue first, then a PR once the cause is clear) and goes through the
 ship loop like any other change.
 
-| Automation                        | When                                    | Opens a PR that…                                                                                                |
-| --------------------------------- | --------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| Legacy reaper                     | Weekly                                  | removes dead code, expired flags (rung 8 removal conditions), and `Cleanup:` items whose "ready when" holds     |
-| Test pruning (`keep-tests-tight`) | Daily; skip if no commits in 24h        | deletes redundant, flaky, or implementation-detail tests while keeping behavior covered                         |
-| Docs freshness                    | Daily; skip if no commits in 24h        | fixes `AGENTS.md`, README, and decisions that recent commits made stale; cuts skills and docs agents never cite |
-| Friction sweep                    | Daily                                   | fixes open `friction` issues; closes fixed or invalid ones with a note                                          |
-| Errors → issues                   | On a new error group or failing prod CI | files one deduped issue per error (repro, link, no secrets or user data), then a fix PR when the cause is clear |
+| Automation                        | When                                    | Opens a PR that…                                                                                                         |
+| --------------------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Legacy reaper                     | Weekly                                  | removes dead code, expired flags (rung 8 removal conditions), and `Cleanup:` items whose "ready when" holds              |
+| Test pruning (`keep-tests-tight`) | Daily; skip if no commits in 24h        | deletes redundant, flaky, or implementation-detail tests while keeping behavior covered                                  |
+| Docs freshness                    | Daily; skip if no commits in 24h        | fixes `AGENTS.md`, README, and decisions that recent commits made stale; trims skills and docs to the ones agents cite   |
+| Friction sweep                    | Daily                                   | fixes open `friction` issues; closes fixed or invalid ones with a note                                                   |
+| Errors → issues                   | On a new error group or failing prod CI | files one deduped issue per error (repro and link, free of secrets and user data), then a fix PR when the cause is clear |
 
 **Merge gate (risk tiers from the interview):** only low- and medium-risk PRs
-auto-merge, only with green CI, and never beyond the **Agent may merge** answer.
+auto-merge, only with green CI, and within the **Agent may merge** answer.
 Medium still needs its AI reviewer (+ rung 4 proof). High risk, red or pending
 CI, and anything in **Always human** park for the human.
 
@@ -213,14 +211,14 @@ and [`@kentcdodds/friction-log`](https://kody.codes/@kentcdodds/friction-log)
 (daily friction sweep). They are **Kent's defaults**: every automation starts
 disabled with no repos, so you list repos and a notify target, then enable the
 ones you want. The package is hidden from Kody search; this link is how you find
-it. A template to fork and adapt, not required.
+it. A template to fork and adapt.
 
 **Kody no:** one scheduled CI workflow per automation (`schedule:` cron, or a
 scheduled pipeline) that launches your coding agent with the same prompt and
 merge gate. Trigger errors → issues from your error tracker's alert webhook
-(`repository_dispatch`) or a failed default-branch `workflow_run`, not a
-schedule. Name the files after the automation (for example
-`.github/workflows/legacy-reaper.yml`) so the audit finds them.
+(`repository_dispatch`) or a failed default-branch `workflow_run`. Name the
+files after the automation (for example `.github/workflows/legacy-reaper.yml`)
+so the audit finds them.
 
 ## Ship-PR loop
 
@@ -236,10 +234,10 @@ decisions in code and keep the skill thin.
   into the repo with
   `curl -fsSL https://raw.githubusercontent.com/kentcdodds/kcd-skills/main/skills/autopilot/scripts/ship-pr.mjs -o scripts/ship-pr.mjs`
   (adapt the folder; Node 18+, needs an authenticated `gh`). Each run reads the
-  PR once and prints one next action (`--json` for agents). It changes nothing
-  unless the action is safe (mark a draft ready) or you pass `--merge` and
-  policy allows it. With no config, low risk needs green CI only and medium/high
-  park with "no reviewer configured".
+  PR once and prints one next action (`--json` for agents). It acts on its own
+  only when the action is safe (mark a draft ready), or when you pass `--merge`
+  and policy allows it. With no config, low risk needs green CI only and
+  medium/high park with "no reviewer configured".
 
 Write `.github/ship-pr.json` from the interview answers. Whole-line `//`
 comments are allowed:
@@ -279,7 +277,7 @@ description:
 2. Run `node scripts/ship-pr.mjs <pr> --risk <tier> --json` (the copy in this
    repo) or the Kody tick.
 3. Do the one action it returns: fix CI, address review threads (fix, or reply
-   why not; never silently resolve "unsure"), resolve conflicts, or wait.
+   with why; answer every "unsure" thread), resolve conflicts, or wait.
    Reviewers scrutinize every changed test expectation against the intent.
 4. Repeat step 2 until it says `merge`, `parked`, or `done`. Merge only with
    `--merge` when the maintainer's policy allows it for this tier.
