@@ -15,7 +15,7 @@ export const rungs = [
 	{ id: 1, pillar: 'good-prs', name: 'Agent map + one verify command in CI' },
 	{ id: 2, pillar: 'good-prs', name: 'Decisions directory' },
 	{ id: 3, pillar: 'good-prs', name: 'Primitives catalog' },
-	{ id: 4, pillar: 'good-prs', name: 'Self-verification script' },
+	{ id: 4, pillar: 'good-prs', name: 'Self-verification: control CLI + skill' },
 	{ id: 5, pillar: 'good-prs', name: 'PR template' },
 	{ id: 6, pillar: 'review', name: 'Ship loop' },
 	{
@@ -43,6 +43,13 @@ const ignoredDirs = new Set([
 	'.next',
 	'coverage',
 ])
+
+// Rung 4: a project control CLI (tools/control-kody.ts shape) or its skill.
+const controlLabel =
+	'project control CLI or skill (tools/control-*.ts, bin/control-*, .agents/skills/control-*/SKILL.md)'
+const controlPathPattern =
+	/^(tools|scripts|bin)\/control[-_][^/]+$|^bin\/control$|^\.(agents|cursor|claude|codex)\/skills\/control-[^/]+\/SKILL\.md$/i
+const controlScriptPattern = /^control([-:_]|$)/i
 
 // Per rung: [label, path regex] pairs. A match becomes evidence.
 const pathRules = {
@@ -73,6 +80,7 @@ const pathRules = {
 			'e2e or self-verify config (playwright, cypress, *smoke*, *self-verify*)',
 			/(^|\/)(playwright|cypress)[^/]*\.(config\.)?[cm]?[jt]s$|(^|\/)[^/]*(smoke|self-verify|verify-app)[^/]*\.[a-z]+$/i,
 		],
+		[controlLabel, controlPathPattern],
 	],
 	5: [
 		[
@@ -559,6 +567,26 @@ export function detect(root, { verify = [], timeout = 900 } = {}) {
 		findings.push({
 			text: `CI does not run \`${run(primaryName)}\`; it skips ${notInCi.map((name) => `\`${name}\` (${scripts[name] ?? '?'})`).join(', ')}`,
 			rung: 1,
+		})
+	}
+	const controlBins = Object.keys(
+		typeof pkg?.bin === 'object' && pkg.bin ? pkg.bin : {},
+	).filter((name) => controlScriptPattern.test(name))
+	for (const name of controlBins) evidence[4].add(`package.json#bin.${name}`)
+	for (const name of Object.keys(scripts)) {
+		if (controlScriptPattern.test(name))
+			evidence[4].add(`package.json#scripts.${name}`)
+	}
+	checked[4].push('control CLI package script or bin (control-*)')
+	const hasControl = [...evidence[4]].some(
+		(item) =>
+			controlPathPattern.test(item) ||
+			/^package\.json#(scripts|bin)\.control/i.test(item),
+	)
+	if (!hasControl) {
+		findings.push({
+			text: 'No project control CLI or skill found (tools/control-*.ts, bin/control-*, .agents/skills/control-*/SKILL.md). Plan a rung 4 PR to build one: doctor, dev, login, request --contains, preview --pr, health --sha, browse --record, map --check (references/verification.md).',
+			rung: 4,
 		})
 	}
 	const e2eScripts = Object.keys(scripts).filter((name) =>

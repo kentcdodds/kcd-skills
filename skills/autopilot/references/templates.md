@@ -96,8 +96,10 @@ Cleanup: <none | needed (#issue) | done>
 
 ## Testing
 
-<Commands run and their result. What you exercised by hand or on a preview, with
-what data. Say what you could not verify.>
+<Commands run and their result, including the control CLI proof (e.g.
+`control-<project> preview --pr 42 --request 'GET /x --contains Y'`,
+`browse --record` video for UI). What data you used. Say what you could not
+verify.>
 
 ## System recap
 
@@ -275,7 +277,10 @@ description:
    why not; never silently resolve "unsure"), resolve conflicts, or wait.
 4. Repeat step 2 until it says `merge`, `parked`, or `done`. Merge only with
    `--merge` when the maintainer's policy allows it for this tier.
-5. After merge, confirm the running version: <how to check version + health>.
+5. Before merge, prove the PR on its preview with the control CLI
+   (`preview --pr`, `request --contains`, `browse --record` for UI) and cite the
+   commands under Testing. After merge, confirm the running version:
+   `control-<project> health --sha <merge-sha>`.
 6. File leftover friction (search first) and `Cleanup:` issues.
 7. Post a summary to <destination>: what shipped, risk, links, what is left.
 ```
