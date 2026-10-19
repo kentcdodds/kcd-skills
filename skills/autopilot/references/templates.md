@@ -69,7 +69,8 @@ Needs that are done or `n/a` drop out.
 
 <One paragraph: what this is and who uses it.>
 
-`<verify command>` is the single local gate. CI runs the same command.
+`<verify command>` is the single local gate. CI runs the same command. Commit
+and pre-push hooks run lint, format, typecheck, and dead-code checks.
 
 This file is a map, not the docs. Open the page that owns the task:
 
@@ -79,6 +80,9 @@ This file is a map, not the docs. Open the page that owns the task:
 - Shipping a PR: <link to ship-pr skill>
 - Filing friction: <link>
 ```
+
+Link only pages agents actually use, and only skills they load on demand; a
+"load these skills first" line gets ignored. Drop any link agents never cite.
 
 ## PR template
 
@@ -96,10 +100,11 @@ Cleanup: <none | needed (#issue) | done>
 
 ## Testing
 
-<Commands run and their result, including the control CLI proof (e.g.
-`control-<project> preview --pr 42 --request 'GET /x --contains Y'`,
-`browse --record` video for UI). What data you used. Say what you could not
-verify.>
+<Commands run and their result: tests and typecheck, then the control CLI proof
+(e.g. `control-<project> request GET /x --contains Y`,
+`execute --code-file fixture.ts`, `browse --record` video for UI;
+`preview --pr 42` only for production-like changes). What data you used. Why any
+test expectation changed. Say what you could not verify.>
 
 ## System recap
 
@@ -129,9 +134,9 @@ Status: accepted | superseded by NNNN Date: YYYY-MM-DD
 <Concrete conditions that would change the answer.>
 ```
 
-Index rules: half a page each, only for decisions an agent would otherwise
-re-propose, supersede instead of editing history, and check numbers for
-collisions in CI if parallel agents write them.
+Index rules: half a page each, only for decisions that span several PRs or that
+an agent would otherwise re-propose, supersede instead of editing history, and
+check numbers for collisions in CI if parallel agents write them.
 
 ## Friction issue form (GitHub example; adapt to your tracker)
 
@@ -192,14 +197,14 @@ ship loop like any other change.
 | --------------------------------- | --------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
 | Legacy reaper                     | Weekly                                  | removes dead code, expired flags (rung 8 removal conditions), and `Cleanup:` items whose "ready when" holds     |
 | Test pruning (`keep-tests-tight`) | Daily; skip if no commits in 24h        | deletes redundant, flaky, or implementation-detail tests while keeping behavior covered                         |
-| Docs freshness                    | Daily; skip if no commits in 24h        | fixes `AGENTS.md`, README, and decisions that recent commits made stale                                         |
+| Docs freshness                    | Daily; skip if no commits in 24h        | fixes `AGENTS.md`, README, and decisions that recent commits made stale; cuts skills and docs agents never cite |
 | Friction sweep                    | Daily                                   | fixes open `friction` issues; closes fixed or invalid ones with a note                                          |
 | Errors → issues                   | On a new error group or failing prod CI | files one deduped issue per error (repro, link, no secrets or user data), then a fix PR when the cause is clear |
 
 **Merge gate (risk tiers from the interview):** only low- and medium-risk PRs
 auto-merge, only with green CI, and never beyond the **Agent may merge** answer.
-Medium still needs its AI reviewer (+ preview). High risk, red or pending CI,
-and anything in **Always human** park for the human.
+Medium still needs its AI reviewer (+ rung 4 proof). High risk, red or pending
+CI, and anything in **Always human** park for the human.
 
 **Kody yes:** fork
 [`@kentcdodds/codebase-cleanup`](https://kody.codes/@kentcdodds/codebase-cleanup)
@@ -275,12 +280,14 @@ description:
    repo) or the Kody tick.
 3. Do the one action it returns: fix CI, address review threads (fix, or reply
    why not; never silently resolve "unsure"), resolve conflicts, or wait.
+   Reviewers scrutinize every changed test expectation against the intent.
 4. Repeat step 2 until it says `merge`, `parked`, or `done`. Merge only with
    `--merge` when the maintainer's policy allows it for this tier.
-5. Before merge, prove the PR with the control CLI on its preview
-   (`preview --pr`), or against `dev` when there is none (`request --contains`,
-   `browse --record` for UI), and cite the commands under Testing. After merge,
-   confirm the running version: `control-<project> health --sha <merge-sha>`.
+5. Before merge, prove the PR locally with the control CLI against `dev`
+   (`request --contains`, `execute`, `browse --record` for UI); use
+   `preview --pr` only for production-like changes. Cite the commands under
+   Testing. After merge, confirm the running version:
+   `control-<project> health --sha <merge-sha>`.
 6. File leftover friction (search first) and `Cleanup:` issues.
 7. Post a summary to <destination>: what shipped, risk, links, what is left.
 ```

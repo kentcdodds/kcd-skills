@@ -192,7 +192,10 @@ test('detect proposes a control CLI when rung 4 has none', (t) => {
 	const finding = controlFinding(result)
 	assert.ok(finding)
 	assert.match(finding.text, /Plan a rung 4 PR to build one/)
-	assert.match(finding.text, /preview --pr.*health --sha.*browse --record/)
+	assert.match(
+		finding.text,
+		/dev.*request --contains.*browse --record.*health --sha.*preview --pr only for production-like/,
+	)
 	assert.match(finding.text, /references\/verification\.md/)
 	const rung4 = result.rungs.find((r) => r.id === 4)
 	assert.ok(rung4.evidence.includes('playwright.config.ts'))
