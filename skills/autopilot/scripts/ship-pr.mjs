@@ -4,10 +4,13 @@
 // failing CI; pending CI; reviewer not configured→park; reviewer missing→wait;
 // unresolved threads/changes requested→address-review; human approval→park;
 // no merge authority→park; ready-to-merge / merge with --merge.
-// Exit codes: 0 done/parked, 10 needs agent action, 20 waiting, 1 error.
+// Host-neutral: pass the PR state with --input (any host, any tool), or let
+// the built-in GitHub adapter read it with `gh` when that is available.
+// Exit codes: 0 done/parked, 10 needs agent action, 20 waiting,
+// 30 needs PR state from the agent (--input), 1 error.
 import { execFileSync } from 'node:child_process'
-import { readFileSync } from 'node:fs'
-import { pathToFileURL } from 'node:url'
+import { readFileSync, realpathSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 
 const defaultConfig = {
 	reviewers: { low: [], medium: [], high: [] },
@@ -255,7 +258,7 @@ export function decide(
 	if (risk !== 'low' && reviewers.length === 0) {
 		return {
 			step: 'park',
-			reason: `No reviewer configured for risk tier ${risk}. Add reviewers to .github/ship-pr.json.`,
+			reason: `No reviewer configured for risk tier ${risk}. Add reviewers to the ship-pr config.`,
 		}
 	}
 	const missing = reviewers.filter((reviewer) => {
@@ -278,7 +281,7 @@ export function decide(
 		return {
 			step: 'address-review',
 			reason:
-				'Fix and reply to each thread, or explain why it is invalid; never resolve an unsure thread silently. Then run node ship-pr.mjs resolve <id>.',
+				'Fix each thread or reply with why it is invalid, then resolve it. Answer every unsure thread before resolving it.',
 			details: state.unresolvedThreads,
 		}
 	}
@@ -323,26 +326,41 @@ function parseArgs(args) {
 	if (args.includes('--help') || args.includes('-h')) {
 		return { help: true }
 	}
+	if (args.includes('--schema')) {
+		return { schema: true }
+	}
 	if (args[0] === 'resolve') {
 		if (!args[1] || args.length !== 2) {
-			throw new Error('Usage: ship-pr.mjs resolve <threadId>')
+			throw new Error('Usage: kcd-skills autopilot ship-pr resolve <threadId>')
 		}
 		return { resolve: args[1] }
 	}
-	if (!args[0]) {
-		throw new Error('Usage: ship-pr.mjs <pr-number|url> [options]')
-	}
 	const options = {
-		pr: args[0],
+		pr: null,
+		input: null,
 		risk: 'medium',
 		merge: false,
-		configPath: '.github/ship-pr.json',
+		deployChecked: false,
+		configPath: null,
 		json: false,
 		watch: false,
 		interval: 60,
 	}
-	for (let i = 1; i < args.length; i++) {
+	for (let i = 0; i < args.length; i++) {
+		if (i === 0 && !args[i].startsWith('--')) {
+			options.pr = args[i]
+			continue
+		}
 		switch (args[i]) {
+			case '--input':
+				options.input = args[++i]
+				if (!options.input) {
+					throw new Error('--input requires a path, or - for stdin')
+				}
+				break
+			case '--deploy-checked':
+				options.deployChecked = true
+				break
 			case '--risk':
 				options.risk = args[++i]
 				if (!['low', 'medium', 'high'].includes(options.risk)) {
@@ -377,18 +395,29 @@ function parseArgs(args) {
 	if (!Number.isInteger(options.interval) || options.interval < 1) {
 		throw new Error('--interval must be a positive integer')
 	}
+	if (!options.pr && !options.input) {
+		throw new Error(usage)
+	}
+	if (options.input && options.watch) {
+		throw new Error(
+			'--watch needs the GitHub adapter; with --input, run again with fresh state',
+		)
+	}
 	return options
 }
 
+export const configPaths = ['.github/ship-pr.json', 'ship-pr.json']
+
 function loadConfig(file) {
-	try {
-		return parseConfig(readFileSync(file, 'utf8'))
-	} catch (error) {
-		if (error.code === 'ENOENT') {
-			return resolveConfig()
+	for (const candidate of file ? [file] : configPaths) {
+		try {
+			return parseConfig(readFileSync(candidate, 'utf8'))
+		} catch (error) {
+			if (error.code !== 'ENOENT') throw error
+			if (file) throw new Error(`No such config file: ${file}`)
 		}
-		throw error
 	}
+	return resolveConfig()
 }
 
 function report(decision, state, json) {
@@ -410,14 +439,245 @@ function report(decision, state, json) {
 	}
 }
 
-const usage = `Usage: node ship-pr.mjs <pr-number|url> [--risk low|medium|high] [--merge] [--config path] [--json] [--watch [--interval 60]]
-       node ship-pr.mjs resolve <threadId>`
+const usage = `Usage: kcd-skills autopilot ship-pr --input <state.json|-> [--risk low|medium|high] [--merge] [--deploy-checked] [--config path] [--json]
+       kcd-skills autopilot ship-pr <pr-number|url> [--risk ...] [--merge] [--config path] [--json] [--watch [--interval 60]]
+       kcd-skills autopilot ship-pr resolve <threadId>
+       kcd-skills autopilot ship-pr --schema
+--input reads the PR state you gathered with your own tools (any host) and prints the next step.
+Without --input, the built-in GitHub adapter reads the state with gh.
+Config: --config, else .github/ship-pr.json, else ship-pr.json.`
+
+export const stateSchema = `PR state for --input (JSON object). Gather it with whatever tools reach the code host.
+{
+  "number": 70,                       // PR or merge request number
+  "url": "https://host/acme/app/pull/70",
+  "state": "OPEN",                    // OPEN | MERGED | CLOSED
+  "draft": false,
+  "conflicts": false,                 // true when it cannot merge cleanly
+  "behind": false,                    // true when the host requires updating from base first
+  "headSha": "abc123",
+  "mergeSha": null,                   // merge commit once merged
+  "reviewDecision": null,             // CHANGES_REQUESTED when a reviewer asked for changes
+  "checks": [{ "name": "ci", "status": "success", "url": "..." }],
+                                      // required ([] for none); status: success | failure | pending | neutral
+  "reviews": [{ "login": "cursor[bot]", "state": "COMMENTED" }],
+  "approvedByHuman": false,           // a person (not a configured AI reviewer) approved
+  "unresolvedThreads": [{ "id": "t1", "path": "src/a.ts", "line": 3, "author": "cursor[bot]", "body": "...", "url": "..." }]
+}
+A GitHub GraphQL pullRequest response (the adapter's query) is accepted too.
+Steps that change the PR (mark-ready, update-branch, merge) are returned for you to do with your tools; then run again with fresh state.`
+
+const stateStatuses = ['OPEN', 'MERGED', 'CLOSED']
+const checkStatuses = ['success', 'failure', 'pending', 'neutral']
+
+// Accept either the normalized state above or a GitHub GraphQL response.
+export function readState(input, config = {}) {
+	if (!input || typeof input !== 'object' || Array.isArray(input)) {
+		throw new Error('PR state must be a JSON object (see --schema)')
+	}
+	const normalizedKeys = [
+		'draft',
+		'conflicts',
+		'behind',
+		'checks',
+		'reviews',
+		'unresolvedThreads',
+		'approvedByHuman',
+	]
+	const graphql =
+		input.data?.repository ||
+		input.repository ||
+		input.pullRequest ||
+		(('isDraft' in input || 'latestReviews' in input) &&
+			!normalizedKeys.some((key) => key in input))
+	if (graphql) {
+		const pr =
+			input.data?.repository?.pullRequest ??
+			input.repository?.pullRequest ??
+			input.pullRequest ??
+			input
+		if (!pr?.commits?.nodes?.length) {
+			throw new Error(
+				'GitHub GraphQL state needs commits.nodes[].commit.statusCheckRollup (see --schema)',
+			)
+		}
+		return normalize(input, config)
+	}
+	const errors = []
+	if (!Number.isInteger(input.number) && typeof input.url !== 'string') {
+		errors.push('number (integer) or url (string) is required')
+	}
+	if (!stateStatuses.includes(input.state)) {
+		errors.push(`state must be one of ${stateStatuses.join(', ')}`)
+	}
+	for (const key of ['draft', 'conflicts', 'behind', 'approvedByHuman']) {
+		if (input[key] !== undefined && typeof input[key] !== 'boolean') {
+			errors.push(`${key} must be a boolean`)
+		}
+	}
+	if (!Array.isArray(input.checks)) {
+		errors.push('checks must be an array ([] when the PR has no checks)')
+	}
+	for (const key of ['reviews', 'unresolvedThreads']) {
+		if (input[key] !== undefined && !Array.isArray(input[key])) {
+			errors.push(`${key} must be an array`)
+		}
+	}
+	;(input.checks ?? []).forEach((check, index) => {
+		if (typeof check?.name !== 'string') {
+			errors.push(`checks[${index}].name must be a string`)
+		}
+		if (!checkStatuses.includes(check?.status)) {
+			errors.push(
+				`checks[${index}].status must be one of ${checkStatuses.join(', ')}`,
+			)
+		}
+	})
+	;(input.reviews ?? []).forEach((review, index) => {
+		if (typeof review?.login !== 'string') {
+			errors.push(`reviews[${index}].login must be a string`)
+		}
+	})
+	if (errors.length) {
+		throw new Error(
+			`Invalid PR state (see --schema):\n- ${errors.join('\n- ')}`,
+		)
+	}
+	return {
+		number: input.number,
+		url: input.url,
+		state: input.state,
+		draft: input.draft ?? false,
+		conflicts: input.conflicts ?? false,
+		behind: input.behind ?? false,
+		headSha: input.headSha,
+		mergeSha: input.mergeSha ?? undefined,
+		reviewDecision: input.reviewDecision ?? null,
+		checks: input.checks,
+		reviews: input.reviews ?? [],
+		approvedByHuman: input.approvedByHuman ?? false,
+		unresolvedThreads: input.unresolvedThreads ?? [],
+	}
+}
+
+const needsInput = (reason) =>
+	`The built-in GitHub adapter is unavailable: ${reason}
+Gather the PR state with your own tools and pass it in:
+  kcd-skills autopilot ship-pr --input state.json   (or --input - to read stdin)
+The format: kcd-skills autopilot ship-pr --schema`
+
+// Returns null when gh can be used, else why not.
+export function githubAdapterProblem(run = execFileSync) {
+	try {
+		run('gh', ['--version'], { stdio: ['ignore', 'pipe', 'pipe'] })
+	} catch (error) {
+		return error.code === 'ENOENT'
+			? 'gh is not installed.'
+			: `gh --version failed: ${error.message}`
+	}
+	try {
+		run('gh', ['auth', 'status'], { stdio: ['ignore', 'pipe', 'pipe'] })
+	} catch {
+		return 'gh is not authenticated (gh auth status failed).'
+	}
+	return null
+}
+
+function runDeployCheck(config, state) {
+	try {
+		execFileSync(config.deployCheck[0], config.deployCheck.slice(1), {
+			env: { ...process.env, SHIP_PR_SHA: state.mergeSha ?? '' },
+			stdio: 'inherit',
+		})
+		return {
+			step: 'done',
+			reason: 'Pull request is merged and deploy verification passed.',
+		}
+	} catch (error) {
+		return {
+			step: 'deploy-failed',
+			reason: `Deploy check failed: ${error.message}`,
+		}
+	}
+}
+
+const hostActions = {
+	'mark-ready': 'Mark the pull request ready for review',
+	'update-branch': 'Update the branch from its base',
+	merge: 'Merge the pull request',
+}
+
+export function exitCodeFor(step) {
+	if (['wait', 'wait-for-review'].includes(step)) return 20
+	if (
+		[
+			'fix-ci',
+			'fix-conflicts',
+			'address-review',
+			'deploy-failed',
+			...Object.keys(hostActions),
+		].includes(step)
+	) {
+		return 10
+	}
+	return 0
+}
+
+function readInputFile(file) {
+	return readFileSync(file === '-' ? 0 : file, 'utf8')
+}
+
+export function runWithInput(options, config, read = readInputFile) {
+	let parsed
+	try {
+		parsed = JSON.parse(read(options.input))
+	} catch (error) {
+		throw new Error(`--input is not valid JSON: ${error.message}`)
+	}
+	const state = readState(parsed, config)
+	let decision = decide(state, {
+		risk: options.risk,
+		merge: options.merge,
+		config,
+		deployChecked: options.deployChecked,
+	})
+	if (decision.step === 'verify-deploy') {
+		decision = runDeployCheck(config, state)
+	}
+	const { command, ...rest } = decision
+	if (hostActions[decision.step]) {
+		const how = decision.step === 'merge' ? ` (${config.mergeMethod})` : ''
+		rest.reason = `${decision.step === 'merge' ? 'All merge gates passed. ' : ''}${hostActions[decision.step]}${how} with your tools, then run again with fresh state.`
+	}
+	return { decision: rest, state }
+}
 
 export async function main(args = process.argv.slice(2)) {
 	const options = parseArgs(args)
 	if (options.help) {
 		console.log(usage)
 		return 0
+	}
+	if (options.schema) {
+		console.log(stateSchema)
+		return 0
+	}
+	if (options.input) {
+		const config = loadConfig(options.configPath)
+		const { decision, state } = runWithInput(options, config)
+		report(decision, state, options.json)
+		return exitCodeFor(decision.step)
+	}
+	const problem = githubAdapterProblem()
+	if (problem) {
+		if (options.resolve) {
+			console.error(
+				`Resolving needs the GitHub adapter, which is unavailable: ${problem}\nResolve the thread with your own tools.`,
+			)
+		} else {
+			console.error(needsInput(problem))
+		}
+		return 30
 	}
 	if (options.resolve) {
 		const query =
@@ -437,7 +697,14 @@ export async function main(args = process.argv.slice(2)) {
 	const config = loadConfig(options.configPath)
 	let deployChecked = false
 	for (let tick = 0; tick < 60; tick++) {
-		const state = normalize(fetchState(options.pr), config)
+		let raw
+		try {
+			raw = fetchState(options.pr)
+		} catch (error) {
+			console.error(needsInput(error.message))
+			return 30
+		}
+		const state = normalize(raw, config)
 		let decision = decide(state, {
 			risk: options.risk,
 			merge: options.merge,
@@ -450,22 +717,8 @@ export async function main(args = process.argv.slice(2)) {
 			continue
 		}
 		if (decision.step === 'verify-deploy') {
-			try {
-				execFileSync(config.deployCheck[0], config.deployCheck.slice(1), {
-					env: { ...process.env, SHIP_PR_SHA: state.mergeSha ?? '' },
-					stdio: 'inherit',
-				})
-				deployChecked = true
-				decision = {
-					step: 'done',
-					reason: 'Pull request is merged and deploy verification passed.',
-				}
-			} catch (error) {
-				decision = {
-					step: 'deploy-failed',
-					reason: `Deploy check failed: ${error.message}`,
-				}
-			}
+			decision = runDeployCheck(config, state)
+			deployChecked = decision.step === 'done'
 		}
 		report(decision, state, options.json)
 		if (decision.step === 'wait' || decision.step === 'wait-for-review') {
@@ -477,22 +730,26 @@ export async function main(args = process.argv.slice(2)) {
 			}
 			return 20
 		}
-		if (
-			['fix-ci', 'fix-conflicts', 'address-review', 'deploy-failed'].includes(
-				decision.step,
-			)
-		) {
-			return 10
-		}
-		return 0
+		return exitCodeFor(decision.step)
 	}
 	return 20
 }
 
-if (
-	process.argv[1] &&
-	import.meta.url === pathToFileURL(process.argv[1]).href
-) {
+// Compare real paths so a symlinked temp dir (macOS /var -> /private/var)
+// still runs the script.
+function isMain() {
+	if (!process.argv[1]) return false
+	try {
+		return (
+			realpathSync(fileURLToPath(import.meta.url)) ===
+			realpathSync(process.argv[1])
+		)
+	} catch {
+		return false
+	}
+}
+
+if (isMain()) {
 	main().then(
 		(code) => {
 			process.exitCode = code

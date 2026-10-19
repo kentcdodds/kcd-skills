@@ -3,8 +3,8 @@
 // report (--html out.html), or a machine-readable check (--json). Every mode
 // validates first and exits 1 listing every problem. --before adds a
 // before → after column for the hand-off report.
-import { readFileSync, writeFileSync } from 'node:fs'
-import { pathToFileURL } from 'node:url'
+import { readFileSync, realpathSync, writeFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 
 // Keep in sync with audit-detect.mjs (a test checks this). `needs` = rungs
 // whose PRs must merge before this rung's PR opens — the merge-order
@@ -104,6 +104,17 @@ export function validate(audit) {
 					`${where} needs an integer exitCode or a "skipped" reason, not both`,
 				)
 		})
+	}
+	if (audit.host !== undefined) {
+		if (!isText(audit.host?.host) || !Array.isArray(audit.host?.facts))
+			err(
+				'host must be { host, facts: [] } (see kcd-skills autopilot host request)',
+			)
+		else
+			audit.host.facts.forEach((fact, index) => {
+				if (!isText(fact?.text) || !isText(fact?.evidence))
+					err(`host.facts[${index}] needs text and evidence`)
+			})
 	}
 	if (audit.findings !== undefined) {
 		if (!Array.isArray(audit.findings)) err('findings must be an array')
@@ -351,6 +362,16 @@ export function renderText(audit, before) {
 		'',
 		`Score: ${scores.map((score) => `${score} ${counts[score]}`).join(' · ')}`,
 	)
+	if (audit.host?.facts?.length) {
+		lines.push(
+			'',
+			`Host facts (${audit.host.host}):`,
+			...audit.host.facts.map(
+				(f) =>
+					`  - ${f.rung ? `[rung ${f.rung}] ` : ''}${f.text} (${f.evidence})`,
+			),
+		)
+	}
 	if (audit.findings?.length) {
 		lines.push(
 			'',
@@ -445,6 +466,7 @@ th{background:#f6f8fa}code{font-size:.85em;overflow-wrap:anywhere}td:nth-child(4
 <p><strong>Verify:</strong></p>${list(verify)}
 <p>${scores.map((score) => `${badge(score)} ${counts[score]}`).join(' ')}</p>
 ${sections}
+${audit.host?.facts?.length ? `<h2>Host facts (${html(audit.host.host)})</h2>${list(audit.host.facts.map((f) => `${f.rung ? `[rung ${f.rung}] ` : ''}${f.text} (${f.evidence})`))}` : ''}
 ${audit.findings?.length ? `<h2>Findings</h2>${list(audit.findings.map((f) => `${f.rung ? `[rung ${f.rung}] ` : ''}${f.text}`))}` : ''}
 ${questions.length ? `<h2>Open questions (no PR until answered)</h2>${list(questions)}` : ''}
 ${
@@ -482,7 +504,7 @@ export function parseArgs(args) {
 	return options
 }
 
-const usage = `Usage: node audit-report.mjs <audit.json> [--before before.json] [--html out.html] [--json]
+const usage = `Usage: kcd-skills autopilot report <audit.json> [--before before.json] [--html out.html] [--json]
 Validates the audit (exit 1 with every problem), then prints the terminal report.
 --html writes a self-contained HTML report too. --json prints {ok, errors, summary} only.`
 
@@ -533,10 +555,21 @@ export function main(
 	return 0
 }
 
-if (
-	process.argv[1] &&
-	import.meta.url === pathToFileURL(process.argv[1]).href
-) {
+// Compare real paths so a symlinked temp dir (macOS /var -> /private/var)
+// still runs the script.
+function isMain() {
+	if (!process.argv[1]) return false
+	try {
+		return (
+			realpathSync(fileURLToPath(import.meta.url)) ===
+			realpathSync(process.argv[1])
+		)
+	} catch {
+		return false
+	}
+}
+
+if (isMain()) {
 	try {
 		process.exitCode = main()
 	} catch (error) {

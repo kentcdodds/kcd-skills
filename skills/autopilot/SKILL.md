@@ -8,8 +8,14 @@ description:
 
 # Put this repo on autopilot
 
-Agents ship most changes; the human owns product decisions. Any stack. Sections
-map to three pillars plus improvement loops.
+Agents ship most changes; the human owns product decisions. Any stack, any code
+host. Sections map to three pillars plus improvement loops.
+
+The tools ship in the `kcd-skills` package: run
+`npx kcd-skills@latest autopilot <command>` (`--help` on any command lists its
+options). Commands work from local files and git; when one needs something only
+the code host knows, it prints what to gather and the format, and you supply it
+with whatever tools reach the host.
 
 ## Principles
 
@@ -63,16 +69,18 @@ map to three pillars plus improvement loops.
    `health --sha`) and a `control-<project>` skill. For apps with routes, a
    Feature Map generated from the framework's route list, with seed-and-reach
    notes, checked in CI. Previews cover production-like checks. Model: Kody's
-   `control-kody`; see `references/verification.md`.
+   `control-kody`; see `npx kcd-skills@latest autopilot verification`.
 5. PR template: Intent, Why, Door, Cleanup, Testing, System recap.
 
 **P2 Review and verification**
 
-6. Ship loop: Kody `ship-pr` or `ship-pr.mjs` + config, behind a thin `ship-pr`
-   skill.
+6. Ship loop: Kody `ship-pr` or `kcd-skills autopilot ship-pr` + config, behind
+   a thin `ship-pr` skill.
 7. Reviewers + previews: AI reviewers per tier scrutinize test-expectation
    changes made with the code they test; previews for production-like changes;
-   agent merge; running-version check after deploy.
+   agent merge; running-version check after deploy. Reviewers check each PR
+   against the project's principles (when it has them), and each principle a
+   machine can check becomes a lint rule or test.
 
 **P3 Blast radius**
 
@@ -94,26 +102,31 @@ Order: P1 first (checkable), then P2/P3 (trust), then loops.
 ## 1. Audit (read only)
 
 Leave tracked files unchanged; deploy, publish, release, and push wait for the
-ladder. Installing dependencies is fine. Scripts gather facts; you judge:
+ladder. Installing dependencies is fine. Commands gather facts; you judge:
 
 ```sh
 d="${TMPDIR:-/tmp}/autopilot"; mkdir -p "$d"
-for f in audit-detect audit-report; do curl -fsSL "https://raw.githubusercontent.com/kentcdodds/kcd-skills/main/skills/autopilot/scripts/$f.mjs" -o "$d/$f.mjs"; done
-node "$d/audit-detect.mjs" . --out "$d/before.json"
+npx kcd-skills@latest autopilot audit . --out "$d/before.json"
 ```
 
 1. **Verify command:** the gate `AGENTS.md` or contributing docs name, else
-   `verify.primary`, else each local CI step. Record each by re-running the
-   detector with `--verify "<command>"` (it keeps your edits).
-2. **Host reads** (read-only `gh` or public API): reviewers and checks on recent
-   PRs, labels, `friction` and `Cleanup:` issues. Cite the command as evidence.
+   `verify.primary`, else each local CI step. Record each by re-running `audit`
+   with `--verify "<command>"` (it keeps your edits).
+2. **Host facts:** `npx kcd-skills@latest autopilot host request` lists what to
+   gather (reviewers, merges, branch rules, labels, issues) and the JSON format.
+   Gather them read-only with the host's CLI, API, or web UI, then
+   `npx kcd-skills@latest autopilot host "$d/before.json" --input facts.json`.
 3. **Score every rung** against "done when" from evidence (file contents,
-   command results). If done needs a command (rung 4, restore test), run
-   `--verify` when it needs no secrets; else cap at `partial`. Note what may
-   live outside the repo (NAS, Kody jobs).
+   command results):
+   `npx kcd-skills@latest autopilot score "$d/before.json" <rung> <score> --evidence <path> --note "<why>"`.
+   It checks the rung right away. Add judgment calls with
+   `npx kcd-skills@latest autopilot finding "$d/before.json" "<text>" --rung <n>`.
+   If done needs a command (rung 4, restore test), run `--verify` when it needs
+   no secrets; else cap at `partial`. Note what may live outside the repo (NAS,
+   Kody jobs).
 4. **Report:**
-   `node "$d/audit-report.mjs" "$d/before.json" --html "$d/before.html"`. Fix
-   every error it lists.
+   `npx kcd-skills@latest autopilot report "$d/before.json" --html "$d/before.html"`.
+   Fix every error it lists.
 
 ## 2. Interview
 
@@ -135,7 +148,7 @@ KI Issue tracker:                <detected>        labels: friction, friction-sk
 ```
 
 "Must not do" seeds rung 2; "Always human" defines the high tier. Kody yes/no
-paths: **Kody yes / no** in `references/templates.md`.
+paths: **Kody yes / no** in `npx kcd-skills@latest autopilot templates`.
 
 ## 3. Plan
 
@@ -145,16 +158,14 @@ paths: **Kody yes / no** in `references/templates.md`.
 - Rungs keep ladder order whatever the answers. A `none` answer (or default)
   narrows its rung (no previews in 7, no flags in 8); inapplicable rungs are
   `n/a` with `notes` (e.g. a library has no backups).
-- Add `plan` rows to `before.json` in ladder order:
-  `{ "rung", "title", "files": [], "effort": "S|M|L", "door": "two-way|one-way" }`.
-  Re-run the report; show the **plan table** and open questions; wait for
-  approval.
+- Add one plan row per PR:
+  `npx kcd-skills@latest autopilot plan add "$d/before.json" <rung> --title "<title>" --file <path> --effort S|M|L --door two-way|one-way`
+  (repeat `--file`; rows stay in ladder order). Re-run the report; show the
+  **plan table** and open questions; wait for approval.
 
 ## 4. Ladder (one PR per rung)
 
-Adapt the templates:
-`curl -fsSL https://raw.githubusercontent.com/kentcdodds/kcd-skills/main/skills/autopilot/references/templates.md`
-([view](https://github.com/kentcdodds/kcd-skills/blob/main/skills/autopilot/references/templates.md)).
+Adapt the templates: `npx kcd-skills@latest autopilot templates`.
 
 Until rung 6 merges, setup PRs pass verify + human review; after, also run the
 ship loop until `ready-to-merge` or `parked`.
@@ -165,9 +176,8 @@ for UI). Use `preview --pr` only when the change needs a production-like
 environment; `health --sha` after deploy. **Testing** cites those commands.
 
 **Policy — merge-order dependency map:** Open a rung's PR only after its
-plan-table **Needs** merge; others may run in parallel. Map:
-`references/templates.md` → **Merge-order dependency map** (drives
-`audit-report.mjs`); edit it there.
+plan-table **Needs** merge; others may run in parallel. The map is **Merge-order
+dependency map** in `templates`; the `report` plan table uses it.
 
 **Policy — who merges setup PRs:** The human always merges setup PRs (they
 change the gates). Edit only if that policy changes.
@@ -178,8 +188,9 @@ Hand off once every planned PR is merged or open.
 
 1. Copy `before.json` to `after.json`; re-score merged rungs; add `prs` rows:
    `{ "rung", "url", "status": "merged|open|parked", "note" }`.
-2. Run the verify command and `node scripts/ship-pr.mjs --help` (or one Kody
-   `tick`) in the target repo.
+2. Run the verify command and one ship-loop step
+   (`npx kcd-skills@latest autopilot ship-pr` or one Kody `tick`) in the target
+   repo.
 3. Report
-   `node "$d/audit-report.mjs" "$d/after.json" --before "$d/before.json" --html "$d/after.html"`,
+   `npx kcd-skills@latest autopilot report "$d/after.json" --before "$d/before.json" --html "$d/after.html"`,
    those results, what you couldn't verify, and open decisions.

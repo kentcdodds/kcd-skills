@@ -315,7 +315,7 @@ test('unconfigured medium and high tiers park while low risk can proceed', () =>
 		assert.equal(decision.step, 'park')
 		assert.equal(
 			decision.reason,
-			`No reviewer configured for risk tier ${risk}. Add reviewers to .github/ship-pr.json.`,
+			`No reviewer configured for risk tier ${risk}. Add reviewers to the ship-pr config.`,
 		)
 	}
 	assert.equal(tick({}).step, 'ready-to-merge')
@@ -336,7 +336,10 @@ test('decide addresses threads before requested changes and explains resolution'
 	})
 	assert.equal(decision.step, 'address-review')
 	assert.deepEqual(decision.details, [thread])
-	assert.match(decision.reason, /never resolve an unsure thread silently/)
+	assert.match(
+		decision.reason,
+		/Answer every unsure thread before resolving it/,
+	)
 	assert.equal(
 		tick({ reviewDecision: 'CHANGES_REQUESTED' }).step,
 		'address-review',

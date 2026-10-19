@@ -1,9 +1,25 @@
 {
   "name": "kcd-skills",
-  "version": "1.0.0",
-  "description": "Kent C. Dodds's personal agent skills, shared directly from GitHub.",
-  "private": true,
+  "version": "0.0.0-semantically-released",
+  "description": "Kent C. Dodds's agent skills, with a CLI for their scripts: npx kcd-skills autopilot",
+  "keywords": [
+    "agent",
+    "skills",
+    "autopilot",
+    "cli",
+    "ai"
+  ],
   "type": "module",
+  "bin": {
+    "kcd-skills": "bin/kcd-skills.mjs"
+  },
+  "files": [
+    "bin",
+    "skills"
+  ],
+  "engines": {
+    "node": ">=20.11"
+  },
   "scripts": {
     "format": "oxfmt",
     "format:check": "oxfmt --check",
@@ -16,6 +32,9 @@
   },
   "author": "Kent C. Dodds <me@kentcdodds.com> (https://kentcdodds.com/)",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "bugs": {
     "url": "https://github.com/kentcdodds/kcd-skills/issues"
   },
@@ -25,8 +44,24 @@
   },
   "devDependencies": {
     "@epic-web/config": "^3.2.0",
+    "@semantic-release/commit-analyzer": "^13.0.1",
+    "@semantic-release/github": "^12.0.10",
+    "@semantic-release/npm": "^13.2.0",
+    "@semantic-release/release-notes-generator": "^14.1.1",
     "husky": "^9.1.7",
     "lint-staged": "^17.0.8",
-    "oxfmt": "^0.58.0"
+    "oxfmt": "^0.58.0",
+    "semantic-release": "^25.0.9"
+  },
+  "release": {
+    "branches": [
+      "main"
+    ],
+    "plugins": [
+      "@semantic-release/commit-analyzer",
+      "@semantic-release/release-notes-generator",
+      "@semantic-release/npm",
+      "@semantic-release/github"
+    ]
   }
 }
