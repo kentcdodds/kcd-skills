@@ -52,6 +52,8 @@ npx kcd-skills@latest autopilot score audit.json 1 partial --evidence AGENTS.md 
 npx kcd-skills@latest autopilot finding audit.json "text" --rung 1
 npx kcd-skills@latest autopilot host request # what to gather from the code host
 npx kcd-skills@latest autopilot host audit.json --input facts.json
+npx kcd-skills@latest autopilot triage request # the priority + decision setup
+npx kcd-skills@latest autopilot triage audit.json --input triage.json
 npx kcd-skills@latest autopilot plan add audit.json 1 --title "..." --file AGENTS.md --effort S --door two-way
 npx kcd-skills@latest autopilot report audit.json --html audit.html
 npx kcd-skills@latest autopilot ship-pr --input state.json --risk low --json

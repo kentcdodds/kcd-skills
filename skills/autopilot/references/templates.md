@@ -23,7 +23,7 @@ renders it (`--json` prints `{ ok, errors, summary }` only).
 	"findings": [{ "text": "CI skips format check", "rung": 1 }],
 	"rungs": [
 		{
-			"id": 1, // all 12, once each; pillar must match the rung
+			"id": 1, // all 13, once each; pillar must match the rung
 			"pillar": "good-prs", // good-prs | review | blast-radius | improve
 			"name": "Agent map + one verify command in CI",
 			"score": "partial", // done | partial | missing | unknown | n/a
@@ -56,10 +56,12 @@ The report computes each plan row's Pillar and Needs. **Needs** (merge first;
 edit here and keep `audit-report.mjs` `rungs[].needs` in sync):
 
 - 1 before all
-- 5 before 6 and 11
+- 5 before 6 and 12
 - 4 and 6 before 7
 - 6 before 10
-- 10 and 11 before 12
+- 10 before 11
+- 11 before 12
+- 10, 11, and 12 before 13
 
 Needs that are done or `n/a` drop out.
 
@@ -167,7 +169,31 @@ body:
 
 Quality bar: durable (still true tomorrow), recurring, reproducible, has a clear
 owner in this repo. One papercut per issue. Search open issues first. Keep
-secrets and private data out.
+secrets and private data out. Give it a priority and, when it needs a human
+call, the decision marker (**Triage** below).
+
+## Triage (rung 11)
+
+Every issue agents file (friction, cleanup, errors) gets a priority, plus the
+decision marker when it needs a human call. Agents pick up the highest priority
+first; decision-marked issues wait for the human's call, and the agent picks
+them up once the human answers and removes the marker.
+
+Default scheme (labels):
+
+| Label            | Meaning                                                   |
+| ---------------- | --------------------------------------------------------- |
+| `P0`             | Broken for users or blocking agents now; work it next     |
+| `P1`             | Costs real time on most PRs; this week                    |
+| `P2`             | Worth fixing; when nothing higher is open                 |
+| `P3`             | Nice to have; batch it with nearby work                   |
+| `needs-decision` | A product or one-way-door call for the human; agents wait |
+
+Use the team's scheme when it has one: its priority labels, a project-board
+field and its options, or the tracker's priority field (Linear: Urgent, High,
+Medium, Low). Record the answer with `kcd-skills autopilot triage` so every
+agent files and picks up work the same way, and name the scheme in `AGENTS.md`
+and the friction form.
 
 ## Kody yes / no
 
@@ -184,20 +210,21 @@ fork and reconfigure for your stack.
 dev dependency to pin the version), a ship-pr config from the interview form,
 the issue form, and CI cron.
 
-## Cleanup automations (rung 12)
+## Cleanup automations (rung 13)
 
 Recommended agents: four on a schedule, plus event-driven errors → issues. Each
 one opens a PR (one per run, none when there is nothing to do; errors → issues
 files the issue first, then a PR once the cause is clear) and goes through the
-ship loop like any other change.
+ship loop like any other change. Each one works the highest priority first and
+leaves decision-marked issues for the human (rung 11).
 
-| Automation                        | When                                    | Opens a PR that…                                                                                                         |
-| --------------------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| Legacy reaper                     | Weekly                                  | removes dead code, expired flags (rung 8 removal conditions), and `Cleanup:` items whose "ready when" holds              |
-| Test pruning (`keep-tests-tight`) | Daily; skip if no commits in 24h        | deletes redundant, flaky, or implementation-detail tests while keeping behavior covered                                  |
-| Docs freshness                    | Daily; skip if no commits in 24h        | fixes `AGENTS.md`, README, and decisions that recent commits made stale; trims skills and docs to the ones agents cite   |
-| Friction sweep                    | Daily                                   | fixes open `friction` issues; closes fixed or invalid ones with a note                                                   |
-| Errors → issues                   | On a new error group or failing prod CI | files one deduped issue per error (repro and link, free of secrets and user data), then a fix PR when the cause is clear |
+| Automation                        | When                                    | Opens a PR that…                                                                                                                      |
+| --------------------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Legacy reaper                     | Weekly                                  | removes dead code, expired flags (rung 8 removal conditions), and `Cleanup:` items whose "ready when" holds                           |
+| Test pruning (`keep-tests-tight`) | Daily; skip if no commits in 24h        | deletes redundant, flaky, or implementation-detail tests while keeping behavior covered                                               |
+| Docs freshness                    | Daily; skip if no commits in 24h        | fixes `AGENTS.md`, README, and decisions that recent commits made stale; trims skills and docs to the ones agents cite                |
+| Friction sweep                    | Daily                                   | fixes open `friction` issues by priority; closes fixed or invalid ones with a note                                                    |
+| Errors → issues                   | On a new error group or failing prod CI | files one deduped, prioritized issue per error (repro and link, free of secrets and user data), then a fix PR when the cause is clear |
 
 **Merge gate (risk tiers from the interview):** only low- and medium-risk PRs
 auto-merge, only with green CI, and within the **Agent may merge** answer.
@@ -289,7 +316,8 @@ description:
    `preview --pr` only for production-like changes. Cite the commands under
    Testing. After merge, confirm the running version:
    `control-<project> health --sha <merge-sha>`.
-6. File leftover friction (search first) and `Cleanup:` issues.
+6. File leftover friction (search first) and `Cleanup:` issues, each with a
+   priority and, when it needs a human call, the decision marker.
 7. Post a summary to <destination>: what shipped, risk, links, what is left.
 ```
 
@@ -303,5 +331,6 @@ description:
   templates above, and scheduled pipelines for cron agents.
 - **Linear (or Jira):** keep code review and merge on the code host; put
   friction, cleanup, and decisions-to-make in the tracker. Map the `friction` /
-  `friction-skipped` labels to Linear labels and the issue form to a Linear
+  `friction-skipped` labels to Linear labels, the priority to Linear's priority
+  field, the decision marker to a label, and the issue form to a Linear
   template. Link the issue in the PR so the ship loop can close it.

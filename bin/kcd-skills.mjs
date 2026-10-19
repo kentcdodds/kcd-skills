@@ -46,6 +46,16 @@ export const commands = {
 					: edit.main('host', args)
 			},
 		},
+		triage: {
+			summary:
+				"Record the team's priority scheme and decision marker (`triage request` prints the format)",
+			run: async (args) => {
+				const edit = await script('autopilot', 'audit-edit')
+				return args[0] === 'request'
+					? edit.main('triage-request', args.slice(1))
+					: edit.main('triage', args)
+			},
+		},
 		plan: {
 			summary: 'Add or replace a plan row: plan add <audit.json> <rung> ...',
 			run: async (args) => {
