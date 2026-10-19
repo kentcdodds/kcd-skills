@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [20, 22, 24]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - name: Format
+        if: matrix.node == 24
+        run: npm run format:check
+      - name: Run the packed CLI
+        run: |
+          npm pack
+          cd "$RUNNER_TEMP"
+          npm exec --yes --package "$GITHUB_WORKSPACE"/kcd-skills-*.tgz -- kcd-skills autopilot > skill.md
+          head -n 5 skill.md
+          npm exec --yes --package "$GITHUB_WORKSPACE"/kcd-skills-*.tgz -- kcd-skills autopilot audit "$GITHUB_WORKSPACE" > /dev/null

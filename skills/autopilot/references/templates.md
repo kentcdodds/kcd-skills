@@ -5,8 +5,9 @@ commands to fit the repo. Keep what applies.
 
 ## Audit JSON
 
-`audit-detect.mjs` writes it; you fill the judgment fields; `audit-report.mjs`
-validates and renders it (`--json` prints `{ ok, errors, summary }` only).
+`kcd-skills autopilot audit` writes it; you fill the judgment fields (`score`,
+`finding`, `host`, `plan add`); `kcd-skills autopilot report` validates and
+renders it (`--json` prints `{ ok, errors, summary }` only).
 
 ```jsonc
 {
@@ -179,10 +180,9 @@ secrets and private data out.
 daily [`kody-hq/kody`](https://github.com/kody-hq/kody) sweep): a template to
 fork and reconfigure for your stack.
 
-**Kody no:**
-`curl -fsSL https://raw.githubusercontent.com/kentcdodds/kcd-skills/main/skills/autopilot/scripts/ship-pr.mjs -o scripts/ship-pr.mjs`
-(use the repo's script folder), write `.github/ship-pr.json` from the interview
-form, and use the issue form and CI cron.
+**Kody no:** `npx kcd-skills@latest autopilot ship-pr` (or add `kcd-skills` as a
+dev dependency to pin the version), a ship-pr config from the interview form,
+the issue form, and CI cron.
 
 ## Cleanup automations (rung 12)
 
@@ -229,18 +229,18 @@ decisions in code and keep the skill thin.
   [`@kentcdodds/ship-pr`](https://kody.codes/@kentcdodds/ship-pr), act on the
   step it returns, and tick again. Same Kent defaults as **Kody yes / no** above
   — fork and reconfigure.
-- **GitHub without Kody:** copy
-  [`ship-pr.mjs`](https://github.com/kentcdodds/kcd-skills/blob/main/skills/autopilot/scripts/ship-pr.mjs)
-  into the repo with
-  `curl -fsSL https://raw.githubusercontent.com/kentcdodds/kcd-skills/main/skills/autopilot/scripts/ship-pr.mjs -o scripts/ship-pr.mjs`
-  (adapt the folder; Node 18+, needs an authenticated `gh`). Each run reads the
-  PR once and prints one next action (`--json` for agents). It acts on its own
-  only when the action is safe (mark a draft ready), or when you pass `--merge`
-  and policy allows it. With no config, low risk needs green CI only and
-  medium/high park with "no reviewer configured".
+- **Without Kody (any host):** `npx kcd-skills@latest autopilot ship-pr` (Node
+  20+). Gather the PR state with the host's tools and pass it with
+  `--input state.json` (or `--input -` for stdin); `--schema` prints the format.
+  Each run prints one next action (`--json` for agents). Steps that change the
+  PR (mark ready, update branch, merge) come back for the agent to do, then it
+  runs again with fresh state. On GitHub with an authenticated `gh`, pass the PR
+  number instead: it reads the state itself, marks drafts ready, and merges when
+  you pass `--merge` and policy allows it. With no config, low risk needs green
+  CI only and medium/high park with "no reviewer configured".
 
-Write `.github/ship-pr.json` from the interview answers. Whole-line `//`
-comments are allowed:
+Write the config from the interview answers to `.github/ship-pr.json` or
+`ship-pr.json` (or pass `--config`). Whole-line `//` comments are allowed:
 
 ```jsonc
 {
@@ -274,11 +274,14 @@ description:
 # Ship PR
 
 1. Fill the PR template, including the system recap.
-2. Run `node scripts/ship-pr.mjs <pr> --risk <tier> --json` (the copy in this
-   repo) or the Kody tick.
+2. Gather the PR state with the host's tools and run
+   `npx kcd-skills@latest autopilot ship-pr --input state.json --risk <tier> --json`
+   (format: `--schema`; on GitHub with `gh`, pass the PR number instead), or the
+   Kody tick.
 3. Do the one action it returns: fix CI, address review threads (fix, or reply
-   with why; answer every "unsure" thread), resolve conflicts, or wait.
-   Reviewers scrutinize every changed test expectation against the intent.
+   with why; answer every "unsure" thread), resolve conflicts, mark ready,
+   merge, or wait. Reviewers scrutinize every changed test expectation against
+   the intent.
 4. Repeat step 2 until it says `merge`, `parked`, or `done`. Merge only with
    `--merge` when the maintainer's policy allows it for this tier.
 5. Before merge, prove the PR locally with the control CLI against `dev`

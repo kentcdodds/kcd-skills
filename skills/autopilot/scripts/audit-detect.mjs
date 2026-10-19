@@ -6,9 +6,15 @@
 // Re-running with --out keeps the agent's score, notes, inferred, and
 // evidence/checked entries already in that file.
 import { execFileSync, spawnSync } from 'node:child_process'
-import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import {
+	existsSync,
+	readdirSync,
+	readFileSync,
+	realpathSync,
+	writeFileSync,
+} from 'node:fs'
 import path from 'node:path'
-import { pathToFileURL } from 'node:url'
+import { fileURLToPath } from 'node:url'
 
 // Keep in sync with audit-report.mjs (a test checks this).
 export const rungs = [
@@ -359,6 +365,20 @@ export function missingReferences(root, rel, text, files) {
 	return results
 }
 
+// Local git history for a missing file: the commit that deleted it, if any.
+export function deletedIn(root, ref) {
+	try {
+		const line = execFileSync(
+			'git',
+			['log', '-1', '--diff-filter=D', '--format=%h %as %s', '--', ref],
+			{ cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] },
+		).trim()
+		return line ? ` (deleted in ${line})` : ''
+	} catch {
+		return ''
+	}
+}
+
 function gitInfo(root) {
 	const run = (args) => {
 		try {
@@ -503,7 +523,7 @@ export function detect(root, { verify = [], timeout = 900 } = {}) {
 		}
 		for (const missing of missingReferences(root, file, text, files)) {
 			findings.push({
-				text: `${missing.file}:${missing.line} references ${missing.ref}, which does not exist`,
+				text: `${missing.file}:${missing.line} references ${missing.ref}, which does not exist${deletedIn(root, missing.ref)}`,
 				file: missing.file,
 				rung: /deploy|release|publish/i.test(file) ? 7 : 1,
 			})
@@ -517,7 +537,7 @@ export function detect(root, { verify = [], timeout = 900 } = {}) {
 			files,
 		)) {
 			findings.push({
-				text: `${missing.file}:${missing.line} references ${missing.ref}, which does not exist`,
+				text: `${missing.file}:${missing.line} references ${missing.ref}, which does not exist${deletedIn(root, missing.ref)}`,
 				file,
 				rung: 7,
 			})
@@ -685,9 +705,10 @@ export function detect(root, { verify = [], timeout = 900 } = {}) {
 	)
 	for (const file of [...evidence[6]].filter((f) => f.endsWith('SKILL.md'))) {
 		const text = read(root, file)
-		const deterministic = /ship-pr\.mjs|\btick\b|@kentcdodds\/ship-pr/.test(
-			text,
-		)
+		const deterministic =
+			/ship-pr\.mjs|kcd-skills\S* autopilot ship-pr|\btick\b|@kentcdodds\/ship-pr/.test(
+				text,
+			)
 		hints[6].push(
 			`${file} ${deterministic ? 'calls a deterministic tick/script' : 'is a prose loop (no ship-pr script or tick)'}`,
 		)
@@ -745,6 +766,7 @@ export function mergePrevious(next, previous) {
 		...keepRows('plan'),
 		...keepRows('prs'),
 		...keepRows('interview'),
+		...keepRows('host'),
 		stack: {
 			...next.stack,
 			summary: previous.stack?.summary || next.stack.summary,
@@ -816,15 +838,16 @@ function summarize(result) {
 	return lines.join('\n')
 }
 
-export const fieldGuide = `Fill each rung, then run audit-report.mjs:
+export const fieldGuide = `Fill each rung (by hand or with kcd-skills autopilot score), then run kcd-skills autopilot report:
   score     done | partial (exists, misses part) | missing | unknown (nothing you can read shows it); n/a only in the plan step
   evidence  paths or read-only commands that support the score (keep or add)
   checked   what you looked for and did not find
   notes     why; required for partial, unknown, n/a, and inferred
   inferred  true when only the human can confirm it
-Add judgment findings as { "text", "rung" }. Re-running with --out keeps these fields.`
+Add judgment findings with kcd-skills autopilot finding. Re-running with --out keeps these fields.
+Host facts (reviewers, merges, branch rules, labels, issues): kcd-skills autopilot host request prints what to gather and the format.`
 
-const usage = `Usage: node audit-detect.mjs [repo-dir] [--out audit.json] [--verify "<command>"]... [--timeout seconds]
+const usage = `Usage: kcd-skills autopilot audit [repo-dir] [--out audit.json] [--verify "<command>"]... [--timeout seconds]
 Prefills audit JSON; leaves score and notes for the agent. --verify runs a command in the repo and records the result.`
 
 export function parseArgs(args) {
@@ -881,10 +904,21 @@ export function main(args = process.argv.slice(2)) {
 	return result.verify.results.some((r) => r.exitCode !== 0) ? 2 : 0
 }
 
-if (
-	process.argv[1] &&
-	import.meta.url === pathToFileURL(process.argv[1]).href
-) {
+// Compare real paths so a symlinked temp dir (macOS /var -> /private/var)
+// still runs the script.
+function isMain() {
+	if (!process.argv[1]) return false
+	try {
+		return (
+			realpathSync(fileURLToPath(import.meta.url)) ===
+			realpathSync(process.argv[1])
+		)
+	} catch {
+		return false
+	}
+}
+
+if (isMain()) {
 	try {
 		process.exitCode = main()
 	} catch (error) {
