@@ -82,6 +82,9 @@ export const commands = {
 	},
 }
 
+// Earlier skill names that still print the current skill. Not listed in help.
+export const aliases = { 'file-friction': 'friction-log' }
+
 export function listSkills() {
 	return readdirSync(skillsDir, { withFileTypes: true })
 		.filter(
@@ -164,7 +167,8 @@ export async function run(
 	args,
 	io = { log: console.log, write: (text) => process.stdout.write(text) },
 ) {
-	const [skill, command, ...rest] = args
+	const [name, command, ...rest] = args
+	const skill = Object.hasOwn(aliases, name ?? '') ? aliases[name] : name
 	if (!skill || skill === '--help' || skill === '-h' || skill === 'help') {
 		io.log(help())
 		return 0

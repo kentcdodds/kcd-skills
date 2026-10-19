@@ -1,12 +1,12 @@
 ---
-name: file-friction
+name: friction-log
 description: >
   File durable repo or package papercuts as friction issues. Use when a session
   hits leftover friction outside the ship-pr leftover pass. Ship-pr files its
   leftovers before the summary.
 ---
 
-# File friction
+# Friction log
 
 **File** durable, recurring pain with a clear owner and a reproducible contract
 gap: a missing step, a lying type, a broken harness, docs that disagree with the

@@ -56,15 +56,33 @@ test('help lists skills and autopilot commands', () => {
 	assert.match(result.stdout, /visual-recap/)
 	assert.match(
 		result.stdout,
-		/\n  file-friction\n    File durable repo or package papercuts/,
+		/\n  friction-log\n    File durable repo or package papercuts/,
 	)
 	assert.equal(cli(['--version']).stdout.trim(), pkg.version)
+})
+
+test('file-friction is a quiet alias for friction-log', () => {
+	const skill = readFileSync(
+		path.join(repo, 'skills/friction-log/SKILL.md'),
+		'utf8',
+	)
+	const result = cli(['file-friction'])
+	assert.equal(result.status, 0, result.stderr)
+	assert.equal(
+		result.stdout,
+		`<!-- kcd-skills@${pkg.version} friction-log -->\n${skill}`,
+	)
+	assert.doesNotMatch(cli(['--help']).stdout, /file-friction/)
+	assert.match(
+		readFileSync(path.join(repo, 'skills/ship-pr/SKILL.md'), 'utf8'),
+		/\[friction-log\]\(\.\.\/friction-log\/SKILL\.md\)/,
+	)
 })
 
 test('every skill prints its instructions and help', () => {
 	for (const skill of [
 		'autopilot',
-		'file-friction',
+		'friction-log',
 		'prefer-local-kody-execute',
 		'review-and-recommend',
 		'ship-pr',
