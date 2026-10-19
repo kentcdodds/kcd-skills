@@ -8,6 +8,7 @@ import {
 	expandScript,
 	extractCiSteps,
 	mergePrevious,
+	migrateRungIds,
 	rungs as detectRungs,
 	scriptCalls,
 } from '../skills/autopilot/scripts/audit-detect.mjs'
@@ -18,6 +19,7 @@ import {
 	renderText,
 	rungs as reportRungs,
 	validate,
+	validateTriage,
 } from '../skills/autopilot/scripts/audit-report.mjs'
 
 function validAudit(overrides = {}) {
@@ -69,8 +71,8 @@ const plan = [
 	},
 ]
 
-test('detect and report scripts share the same 12 rungs and pillars', () => {
-	assert.equal(reportRungs.length, 12)
+test('detect and report scripts share the same 13 rungs and pillars', () => {
+	assert.equal(reportRungs.length, 13)
 	assert.deepEqual(
 		detectRungs,
 		reportRungs.map(({ id, pillar, name }) => ({ id, pillar, name })),
@@ -201,7 +203,7 @@ test('detect proposes a control CLI when rung 4 has none', (t) => {
 	assert.ok(rung4.evidence.includes('playwright.config.ts'))
 })
 
-test('detect recognizes rung 12 cleanup automations', (t) => {
+test('detect recognizes rung 13 cleanup automations', (t) => {
 	const root = mkdtempSync(path.join(tmpdir(), 'autopilot-detect-'))
 	t.after(() => rmSync(root, { recursive: true, force: true }))
 	const write = (file, text) => {
@@ -217,28 +219,61 @@ test('detect recognizes rung 12 cleanup automations', (t) => {
 		'AGENTS.md',
 		'# Map\n\nCleanup agents: forked codebase-cleanup (legacy reaper, keep-tests-tight).\n',
 	)
-	const rung12 = detect(root).rungs.find((r) => r.id === 12)
-	assert.equal(rung12.name, 'Signals + cleanup cron agents')
-	assert.ok(rung12.evidence.includes('.github/workflows/legacy-reaper.yml'))
-	assert.ok(rung12.evidence.includes('.github/workflows/docs-freshness.yml'))
-	assert.ok(rung12.checked.some((c) => /cleanup automation workflow/.test(c)))
+	const rung13 = detect(root).rungs.find((r) => r.id === 13)
+	assert.equal(rung13.name, 'Signals + cleanup cron agents')
+	assert.ok(rung13.evidence.includes('.github/workflows/legacy-reaper.yml'))
+	assert.ok(rung13.evidence.includes('.github/workflows/docs-freshness.yml'))
+	assert.ok(rung13.checked.some((c) => /cleanup automation workflow/.test(c)))
 	assert.ok(
-		rung12.hints.some((h) => /^AGENTS\.md:3 .*codebase-cleanup/.test(h)),
+		rung13.hints.some((h) => /^AGENTS\.md:3 .*codebase-cleanup/.test(h)),
 	)
 	assert.ok(
-		rung12.hints.some((h) =>
+		rung13.hints.some((h) =>
 			/legacy-reaper\.yml:3 schedule "0 8 \* \* 1"/.test(h),
 		),
 	)
 	write('docs/ops.md', 'Our errors-to-issues agent files bugs.\n')
 	assert.ok(
 		detect(root)
-			.rungs.find((r) => r.id === 12)
+			.rungs.find((r) => r.id === 13)
 			.hints.some((h) => /^docs\/ops\.md:1 /.test(h)),
 	)
-	const report = reportRungs.find((r) => r.id === 12)
-	assert.equal(report.name, rung12.name)
-	assert.deepEqual(report.needs, [10, 11])
+	const report = reportRungs.find((r) => r.id === 13)
+	assert.equal(report.name, rung13.name)
+	assert.deepEqual(report.needs, [10, 11, 12])
+})
+
+test('rung 11 triage sits between friction and cleanup issues', (t) => {
+	const root = mkdtempSync(path.join(tmpdir(), 'autopilot-detect-'))
+	t.after(() => rmSync(root, { recursive: true, force: true }))
+	mkdirSync(path.join(root, '.github'), { recursive: true })
+	writeFileSync(path.join(root, '.github/labels.yml'), '- name: P0\n')
+	writeFileSync(
+		path.join(root, 'CONTRIBUTING.md'),
+		'Triage: add a P1 priority label, or needs-decision.\n',
+	)
+	const rungs = detect(root).rungs
+	assert.deepEqual(
+		rungs.filter((r) => r.pillar === 'improve').map((r) => [r.id, r.name]),
+		[
+			[10, 'Friction form'],
+			[11, 'Triage: priority + decision marker'],
+			[12, 'Cleanup issues'],
+			[13, 'Signals + cleanup cron agents'],
+		],
+	)
+	const triage = rungs.find((r) => r.id === 11)
+	assert.ok(triage.evidence.includes('.github/labels.yml'))
+	assert.ok(triage.hints.some((h) => /^CONTRIBUTING\.md:1 /.test(h)))
+	assert.ok(triage.hints.some((h) => /kcd-skills autopilot triage/.test(h)))
+	assert.deepEqual(
+		reportRungs.filter((r) => r.id >= 11).map((r) => [r.id, r.needs]),
+		[
+			[11, [10]],
+			[12, [5, 11]],
+			[13, [10, 11, 12]],
+		],
+	)
 })
 
 test('extractCiSteps reads inline, block, folded, and script-list commands', () => {
@@ -361,11 +396,11 @@ jobs:
 	assert.ok(
 		rung(5).hints.some((h) => /lacks \[Why, Door, System recap\]/.test(h)),
 	)
-	assert.ok(rung(11).evidence.includes('.github/pull_request_template.md'))
+	assert.ok(rung(12).evidence.includes('.github/pull_request_template.md'))
 	assert.ok(rung(9).hints.some((h) => h.startsWith('README.md:1')))
-	assert.ok(rung(12).evidence.includes('.github/workflows/ci.yml'))
+	assert.ok(rung(13).evidence.includes('.github/workflows/ci.yml'))
 	assert.ok(
-		rung(12).evidence.includes('package.json#dependencies.@sentry/node'),
+		rung(13).evidence.includes('package.json#dependencies.@sentry/node'),
 	)
 	assert.ok(result.rungs.every((r) => r.score === null && r.notes === ''))
 	assert.match(result.stack.summary, /node \(npm\)/)
@@ -402,7 +437,7 @@ test('validate accepts a complete audit and plan', () => {
 
 test('validate rejects malformed audits with specific errors', () => {
 	const cases = [
-		[validAudit({ rungs: validAudit().rungs.slice(1) }), /exactly 12 entries/],
+		[validAudit({ rungs: validAudit().rungs.slice(1) }), /exactly 13 entries/],
 		[
 			validAudit({ rungs: validAudit().rungs.slice(1) }),
 			/rung 1 \(.*\) is missing/,
@@ -540,7 +575,7 @@ test('main validates in every mode, writes HTML, and --json reports errors', () 
 	assert.match(written['out.html'], /Autopilot audit: app/)
 	assert.match(
 		logs.join('\n'),
-		/Score: done 1 · partial 1 · missing 1 · unknown 1 · n\/a 8/,
+		/Score: done 1 · partial 1 · missing 1 · unknown 1 · n\/a 9/,
 	)
 	assert.throws(
 		() => main(['bad.json'], io),
@@ -560,7 +595,80 @@ test('main validates in every mode, writes HTML, and --json reports errors', () 
 		partial: 1,
 		missing: 1,
 		unknown: 1,
-		'n/a': 8,
+		'n/a': 9,
 	})
 	assert.throws(() => main(['good.json', '--nope'], io), /Unknown option/)
+})
+
+test('re-running on a 12-rung audit moves Cleanup judgments to rungs 12 and 13', () => {
+	const old = {
+		rungs: [
+			...Array.from({ length: 10 }, (_, i) => ({
+				id: i + 1,
+				name: `r${i + 1}`,
+			})),
+			{ id: 11, name: 'Cleanup issues', score: 'partial', notes: 'cleanup' },
+			{ id: 12, name: 'Signals + cleanup cron agents', score: 'missing' },
+		],
+		plan: [{ rung: 12, title: 'cron' }],
+		findings: [{ text: 'f', rung: 11 }],
+		host: { host: 'github', facts: [{ rung: 11, text: 'x', evidence: 'y' }] },
+	}
+	const migrated = migrateRungIds(old)
+	assert.equal(migrated.rungs.find((r) => r.id === 12).notes, 'cleanup')
+	assert.equal(migrated.rungs.find((r) => r.id === 13).score, 'missing')
+	assert.equal(
+		migrated.rungs.some((r) => r.id === 11),
+		false,
+	)
+	assert.equal(migrated.plan[0].rung, 13)
+	assert.equal(migrated.findings[0].rung, 12)
+	assert.equal(migrated.host.facts[0].rung, 12)
+	const next = {
+		findings: [],
+		verify: { results: [] },
+		stack: { summary: '' },
+		rungs: detectRungs.map((r) => ({
+			...r,
+			score: null,
+			notes: '',
+			evidence: [],
+			checked: [],
+		})),
+	}
+	const merged = mergePrevious(next, old)
+	assert.equal(merged.rungs.find((r) => r.id === 11).score, null)
+	assert.equal(merged.rungs.find((r) => r.id === 12).score, 'partial')
+	// A current 13-rung audit is left alone.
+	const current = {
+		rungs: detectRungs.map((r) => ({ id: r.id, name: r.name })),
+	}
+	assert.equal(migrateRungIds(current), current)
+})
+
+test('triage validation is shared by the triage command and the report', () => {
+	const good = {
+		system: 'labels',
+		priorities: ['P0', 'P1', 'P2', 'P3'],
+		decision: 'needs-decision',
+		evidence: 'gh label list',
+	}
+	assert.deepEqual(validateTriage(good), [])
+	assert.deepEqual(validate(validAudit({ triage: good })), [])
+	const problems = validate(
+		validAudit({
+			triage: { ...good, system: 'board', priorities: ['P0'], existing: 'yes' },
+		}),
+	)
+	assert.ok(
+		problems.includes(
+			'triage: system must be one of labels, project-field, tracker-field, none',
+		),
+	)
+	assert.ok(
+		problems.includes(
+			'triage: priorities must list at least two values, highest first',
+		),
+	)
+	assert.ok(problems.includes('triage: existing must be a boolean'))
 })

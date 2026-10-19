@@ -45,12 +45,18 @@ export const rungs = [
 		needs: [1],
 	},
 	{ id: 10, pillar: 'improve', name: 'Friction form', needs: [6] },
-	{ id: 11, pillar: 'improve', name: 'Cleanup issues', needs: [5] },
 	{
-		id: 12,
+		id: 11,
+		pillar: 'improve',
+		name: 'Triage: priority + decision marker',
+		needs: [10],
+	},
+	{ id: 12, pillar: 'improve', name: 'Cleanup issues', needs: [5, 11] },
+	{
+		id: 13,
 		pillar: 'improve',
 		name: 'Signals + cleanup cron agents',
-		needs: [10, 11],
+		needs: [10, 11, 12],
 	},
 ]
 
@@ -70,6 +76,44 @@ const isStringArray = (value) =>
 	Array.isArray(value) &&
 	value.every((item) => typeof item === 'string' && item.trim())
 const isText = (value) => typeof value === 'string' && value.trim().length > 0
+
+export const triageSystems = [
+	'labels',
+	'project-field',
+	'tracker-field',
+	'none',
+]
+
+// Shared by `kcd-skills autopilot triage` and the report.
+export function validateTriage(triage) {
+	if (!triage || typeof triage !== 'object' || Array.isArray(triage)) {
+		return ['must be a JSON object (see kcd-skills autopilot triage request)']
+	}
+	const errors = []
+	if (!triageSystems.includes(triage.system)) {
+		errors.push(`system must be one of ${triageSystems.join(', ')}`)
+	}
+	if (!isStringArray(triage.priorities) || triage.priorities.length < 2) {
+		errors.push('priorities must list at least two values, highest first')
+	}
+	if (!isText(triage.decision)) {
+		errors.push(
+			'decision must name the marker for issues that need a human call',
+		)
+	}
+	if (!isText(triage.evidence)) {
+		errors.push(
+			'evidence must name the command, URL, or "interview" that shows it',
+		)
+	}
+	if (triage.existing !== undefined && typeof triage.existing !== 'boolean') {
+		errors.push('existing must be a boolean')
+	}
+	if (triage.tracker !== undefined && !isText(triage.tracker)) {
+		errors.push('tracker must be a non-empty string')
+	}
+	return errors
+}
 
 export function validate(audit) {
 	const errors = []
@@ -116,6 +160,10 @@ export function validate(audit) {
 					err(`host.facts[${index}] needs text and evidence`)
 			})
 	}
+	if (audit.triage !== undefined) {
+		for (const problem of validateTriage(audit.triage))
+			err(`triage: ${problem}`)
+	}
 	if (audit.findings !== undefined) {
 		if (!Array.isArray(audit.findings)) err('findings must be an array')
 		else
@@ -126,12 +174,12 @@ export function validate(audit) {
 					finding?.rung !== undefined &&
 					!rungs.some((r) => r.id === finding.rung)
 				) {
-					err(`findings[${index}].rung must be 1-12`)
+					err(`findings[${index}].rung must be 1-13`)
 				}
 			})
 	}
 	if (!Array.isArray(audit.rungs)) {
-		err('rungs must be an array of 12 rungs')
+		err('rungs must be an array of 13 rungs')
 		return errors
 	}
 	if (audit.rungs.length !== rungs.length)
@@ -143,7 +191,7 @@ export function validate(audit) {
 		const known = rungs.find((r) => r.id === rung?.id)
 		const where = known ? `rung ${rung.id}` : `rungs[${index}]`
 		if (!known) {
-			err(`${where}.id must be an integer 1-12`)
+			err(`${where}.id must be an integer 1-13`)
 			continue
 		}
 		if (seen.has(rung.id)) err(`${where} appears more than once`)
@@ -197,7 +245,7 @@ export function validate(audit) {
 			audit.prs.forEach((pr, index) => {
 				const where = `prs[${index}]`
 				if (!rungs.some((r) => r.id === pr?.rung))
-					err(`${where}.rung must be 1-12`)
+					err(`${where}.rung must be 1-13`)
 				if (!isText(pr?.url)) err(`${where}.url must be a non-empty string`)
 				if (!prStatuses.includes(pr?.status))
 					err(`${where}.status must be one of ${prStatuses.join(', ')}`)
@@ -218,7 +266,7 @@ function validatePlan(audit, err) {
 		const where = `plan[${index}]`
 		const rung = byId.get(row?.rung)
 		if (!rung) {
-			err(`${where}.rung must be a rung id 1-12`)
+			err(`${where}.rung must be a rung id 1-13`)
 			return
 		}
 		if (planned.has(row.rung))
@@ -328,6 +376,10 @@ const openQuestions = (audit) =>
 		.filter((rung) => rung.score === 'unknown')
 		.map((rung) => `Rung ${rung.id} (${rung.name}): ${rung.notes}`)
 
+export function triageLine(t) {
+	return `${t.priorities.join(' > ')} (${t.system}${t.tracker ? ` on ${t.tracker}` : ''}${t.existing ? ', existing' : ', adopted default'}); decision marker ${t.decision} (${t.evidence})`
+}
+
 export function renderText(audit, before) {
 	const verify = audit.verify.results.map((r) =>
 		r.skipped
@@ -362,6 +414,9 @@ export function renderText(audit, before) {
 		'',
 		`Score: ${scores.map((score) => `${score} ${counts[score]}`).join(' · ')}`,
 	)
+	if (audit.triage) {
+		lines.push('', `Triage: ${triageLine(audit.triage)}`)
+	}
 	if (audit.host?.facts?.length) {
 		lines.push(
 			'',
@@ -466,6 +521,7 @@ th{background:#f6f8fa}code{font-size:.85em;overflow-wrap:anywhere}td:nth-child(4
 <p><strong>Verify:</strong></p>${list(verify)}
 <p>${scores.map((score) => `${badge(score)} ${counts[score]}`).join(' ')}</p>
 ${sections}
+${audit.triage ? `<h2>Triage</h2><p>${html(triageLine(audit.triage))}</p>` : ''}
 ${audit.host?.facts?.length ? `<h2>Host facts (${html(audit.host.host)})</h2>${list(audit.host.facts.map((f) => `${f.rung ? `[rung ${f.rung}] ` : ''}${f.text} (${f.evidence})`))}` : ''}
 ${audit.findings?.length ? `<h2>Findings</h2>${list(audit.findings.map((f) => `${f.rung ? `[rung ${f.rung}] ` : ''}${f.text}`))}` : ''}
 ${questions.length ? `<h2>Open questions (no PR until answered)</h2>${list(questions)}` : ''}

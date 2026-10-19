@@ -40,7 +40,8 @@ with whatever tools reach the host.
 
 **KI Keep improving**
 
-9. Agents file friction after every PR; other agents fix it.
+9. Agents file friction after every PR with a priority; other agents fix it,
+   highest priority first.
 
 ## Rules
 
@@ -91,11 +92,19 @@ with whatever tools reach the host.
 **KI Keep improving**
 
 10. Friction form: issue form + `friction`, `friction-skipped` labels, filed by
-    every ship loop.
-11. Cleanup issues: `Cleanup:` issues with a falsifiable "ready when".
-12. Cleanup cron agents (daily friction sweep, errors → issues, docs freshness
-    and pruning, test pruning, weekly legacy reaper) open PRs; only low/medium
-    risk with green CI auto-merges. See templates → **Cleanup automations**.
+    every ship loop and triaged (rung 11).
+11. Triage: every issue agents file (friction, cleanup, errors) gets a priority
+    and, when it needs a human call, the project's decision marker. Agents work
+    the highest priority first; decision-marked issues wait for the human's
+    call. Default: `P0`–`P3` labels + `needs-decision`; the team's own scheme
+    (labels, a project-board field, a tracker priority field) from the interview
+    takes its place.
+12. Cleanup issues: `Cleanup:` issues with a falsifiable "ready when", triaged
+    (rung 11).
+13. Cleanup cron agents (daily friction sweep, errors → issues, docs freshness
+    and pruning, test pruning, weekly legacy reaper) open PRs, highest priority
+    first (rung 11); only low/medium risk with green CI auto-merges. See
+    templates → **Cleanup automations**.
 
 Order: P1 first (checkable), then P2/P3 (trust), then loops.
 
@@ -145,10 +154,16 @@ P3 Deploy/release:               <detected>        version check: <url/command>
 P3 Flags + metrics source:       <detected | none>
 P3 Backups/restore tested:       <detected | unknown>
 KI Issue tracker:                <detected>        labels: friction, friction-skipped
+KI Priority + decisions:         <detected | P0–P3 + needs-decision (default)>  How does the team rank work
+                                 and flag decisions? (labels, project-board field, tracker priority field, nothing)
 ```
 
-"Must not do" seeds rung 2; "Always human" defines the high tier. Kody yes/no
-paths: **Kody yes / no** in `npx kcd-skills@latest autopilot templates`.
+"Must not do" seeds rung 2; "Always human" defines the high tier. "Priority +
+decisions" sets rung 11: `npx kcd-skills@latest autopilot triage request` prints
+the format; record it with
+`npx kcd-skills@latest autopilot triage "$d/before.json" --input triage.json`.
+Kody yes/no paths: **Kody yes / no** in
+`npx kcd-skills@latest autopilot templates`.
 
 ## 3. Plan
 
