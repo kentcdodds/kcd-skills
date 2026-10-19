@@ -10,7 +10,7 @@
 // Each edit writes the file, then prints the validator's problems for what it
 // touched (exit 1 when there are any).
 import { readFileSync, writeFileSync } from 'node:fs'
-import { rungs, scores, validate } from './audit-report.mjs'
+import { rungs, scores, validate, validateTriage } from './audit-report.mjs'
 
 export const hostRequest = `Host facts for the audit. Gather them read-only with whatever reaches the code host
 (its CLI, API, or web UI), then record them:
@@ -178,40 +178,11 @@ export function addHostFacts(audit, input) {
 }
 
 export function setTriage(audit, input) {
-	const errors = []
-	if (!input || typeof input !== 'object' || Array.isArray(input)) {
-		return [
-			'triage must be a JSON object (see kcd-skills autopilot triage request)',
-		]
-	}
-	const systems = ['labels', 'project-field', 'tracker-field', 'none']
-	if (!systems.includes(input.system)) {
-		errors.push(`system must be one of ${systems.join(', ')}`)
-	}
-	if (
-		!Array.isArray(input.priorities) ||
-		input.priorities.length < 2 ||
-		input.priorities.some((p) => typeof p !== 'string' || !p.trim())
-	) {
-		errors.push('priorities must list at least two values, highest first')
-	}
-	if (typeof input.decision !== 'string' || !input.decision.trim()) {
-		errors.push(
-			'decision must name the marker for issues that need a human call',
-		)
-	}
-	if (typeof input.evidence !== 'string' || !input.evidence.trim()) {
-		errors.push(
-			'evidence must name the command, URL, or "interview" that shows it',
-		)
-	}
-	if (input.existing !== undefined && typeof input.existing !== 'boolean') {
-		errors.push('existing must be a boolean')
-	}
+	const errors = validateTriage(input)
 	if (errors.length) return errors
 	audit.triage = {
 		system: input.system,
-		...(input.tracker ? { tracker: String(input.tracker) } : {}),
+		...(input.tracker ? { tracker: input.tracker } : {}),
 		priorities: input.priorities,
 		decision: input.decision,
 		existing: input.existing ?? false,

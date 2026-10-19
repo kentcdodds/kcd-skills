@@ -77,6 +77,44 @@ const isStringArray = (value) =>
 	value.every((item) => typeof item === 'string' && item.trim())
 const isText = (value) => typeof value === 'string' && value.trim().length > 0
 
+export const triageSystems = [
+	'labels',
+	'project-field',
+	'tracker-field',
+	'none',
+]
+
+// Shared by `kcd-skills autopilot triage` and the report.
+export function validateTriage(triage) {
+	if (!triage || typeof triage !== 'object' || Array.isArray(triage)) {
+		return ['must be a JSON object (see kcd-skills autopilot triage request)']
+	}
+	const errors = []
+	if (!triageSystems.includes(triage.system)) {
+		errors.push(`system must be one of ${triageSystems.join(', ')}`)
+	}
+	if (!isStringArray(triage.priorities) || triage.priorities.length < 2) {
+		errors.push('priorities must list at least two values, highest first')
+	}
+	if (!isText(triage.decision)) {
+		errors.push(
+			'decision must name the marker for issues that need a human call',
+		)
+	}
+	if (!isText(triage.evidence)) {
+		errors.push(
+			'evidence must name the command, URL, or "interview" that shows it',
+		)
+	}
+	if (triage.existing !== undefined && typeof triage.existing !== 'boolean') {
+		errors.push('existing must be a boolean')
+	}
+	if (triage.tracker !== undefined && !isText(triage.tracker)) {
+		errors.push('tracker must be a non-empty string')
+	}
+	return errors
+}
+
 export function validate(audit) {
 	const errors = []
 	const err = (message) => errors.push(message)
@@ -123,16 +161,8 @@ export function validate(audit) {
 			})
 	}
 	if (audit.triage !== undefined) {
-		const t = audit.triage
-		if (
-			!isText(t?.system) ||
-			!isStringArray(t?.priorities ?? null) ||
-			!isText(t?.decision) ||
-			!isText(t?.evidence)
-		)
-			err(
-				'triage must be { system, priorities: [], decision, evidence } (see kcd-skills autopilot triage request)',
-			)
+		for (const problem of validateTriage(audit.triage))
+			err(`triage: ${problem}`)
 	}
 	if (audit.findings !== undefined) {
 		if (!Array.isArray(audit.findings)) err('findings must be an array')

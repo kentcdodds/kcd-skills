@@ -769,7 +769,40 @@ export function detect(root, { verify = [], timeout = 900 } = {}) {
 }
 
 // Keep agent-judged fields from a previous run of the same file.
+// Audits written before rung 11 (Triage) existed have 12 rungs, with Cleanup
+// issues at 11 and cleanup cron agents at 12. Shift those to 12 and 13.
+export function migrateRungIds(audit) {
+	const cleanup = audit?.rungs?.find((r) => r?.id === 11)
+	if (
+		!Array.isArray(audit?.rungs) ||
+		audit.rungs.length !== 12 ||
+		!/^cleanup issues$/i.test(cleanup?.name ?? '')
+	) {
+		return audit
+	}
+	const shift = (id) => (id === 11 || id === 12 ? id + 1 : id)
+	const shiftRows = (rows) =>
+		Array.isArray(rows)
+			? rows.map((row) =>
+					row && typeof row.rung === 'number'
+						? { ...row, rung: shift(row.rung) }
+						: row,
+				)
+			: rows
+	return {
+		...audit,
+		rungs: audit.rungs.map((rung) => ({ ...rung, id: shift(rung.id) })),
+		...(audit.plan ? { plan: shiftRows(audit.plan) } : {}),
+		...(audit.prs ? { prs: shiftRows(audit.prs) } : {}),
+		...(audit.findings ? { findings: shiftRows(audit.findings) } : {}),
+		...(audit.host?.facts
+			? { host: { ...audit.host, facts: shiftRows(audit.host.facts) } }
+			: {}),
+	}
+}
+
 export function mergePrevious(next, previous) {
+	previous = migrateRungIds(previous)
 	if (!previous?.rungs) return next
 	const keepRows = (key) => (previous[key] ? { [key]: previous[key] } : {})
 	return {
