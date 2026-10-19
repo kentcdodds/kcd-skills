@@ -8,6 +8,7 @@
 import { execFileSync, spawnSync } from 'node:child_process'
 import {
 	existsSync,
+	mkdirSync,
 	readdirSync,
 	readFileSync,
 	realpathSync,
@@ -525,6 +526,7 @@ export function detect(root, { verify = [], timeout = 900 } = {}) {
 			findings.push({
 				text: `${missing.file}:${missing.line} references ${missing.ref}, which does not exist${deletedIn(root, missing.ref)}`,
 				file: missing.file,
+				ref: missing.ref,
 				rung: /deploy|release|publish/i.test(file) ? 7 : 1,
 			})
 		}
@@ -539,6 +541,7 @@ export function detect(root, { verify = [], timeout = 900 } = {}) {
 			findings.push({
 				text: `${missing.file}:${missing.line} references ${missing.ref}, which does not exist${deletedIn(root, missing.ref)}`,
 				file,
+				ref: missing.ref,
 				rung: 7,
 			})
 		}
@@ -745,7 +748,7 @@ export function detect(root, { verify = [], timeout = 900 } = {}) {
 			candidates,
 			results: verify.map((command) => runVerify(root, command, timeout)),
 		},
-		findings,
+		findings: dedupeFindings(findings),
 		rungs: rungs.map((rung) => ({
 			...rung,
 			score: null,
@@ -757,11 +760,133 @@ export function detect(root, { verify = [], timeout = 900 } = {}) {
 	}
 }
 
-// Keep agent-judged fields from a previous run of the same file.
+function realPath(value) {
+	if (!value) return null
+	try {
+		return realpathSync(value)
+	} catch {
+		return path.resolve(value)
+	}
+}
+
+// Same checkout: matching real paths, or matching names when neither has a path
+// (legacy fixtures / hand-written JSON).
+export function sameRepo(next, previous) {
+	const nextPath = realPath(next?.repo?.path)
+	const previousPath = realPath(previous?.repo?.path)
+	if (nextPath && previousPath) return nextPath === previousPath
+	if (nextPath || previousPath) return false
+	const nextName = next?.repo?.name
+	const previousName = previous?.repo?.name
+	return Boolean(nextName && previousName && nextName === previousName)
+}
+
+// Collapse duplicate findings: missing-path ones by file+ref, others by text.
+export function findingKey(finding) {
+	if (finding?.file && finding?.ref)
+		return `missing:${finding.file}|${finding.ref}`
+	return `text:${finding?.text ?? ''}`
+}
+
+export function dedupeFindings(findings) {
+	const seen = new Set()
+	const out = []
+	for (const finding of findings ?? []) {
+		const key = findingKey(finding)
+		if (seen.has(key)) continue
+		seen.add(key)
+		out.push(finding)
+	}
+	return out
+}
+
+function formatDuration(durationMs) {
+	return typeof durationMs === 'number'
+		? ` (${(durationMs / 1000).toFixed(1)}s)`
+		: ''
+}
+
+export function formatVerifyLine(result) {
+	const carried = result.carriedOver ? ' [carried over; not re-run]' : ''
+	if (result.skipped) {
+		return `${result.command} → skipped: ${result.skipped}${carried}`
+	}
+	return `${result.command} → exit ${result.exitCode}${formatDuration(result.durationMs)}${carried}`
+}
+
+export function formatCarryOver(carry) {
+	if (!carry) return ''
+	const lines = ['Carry-over from existing --out file:']
+	if (carry.scores.length) {
+		lines.push(`  Kept scores/notes for rungs: ${carry.scores.join(', ')}`)
+	}
+	if (carry.verifyNotRerun.length) {
+		lines.push(
+			`  Verify commands not re-run this time (carried over): ${carry.verifyNotRerun.join(', ')}`,
+		)
+	}
+	if (carry.findings) {
+		lines.push(`  Kept ${carry.findings} finding(s) from the previous file`)
+	}
+	for (const key of ['plan', 'prs', 'interview', 'host']) {
+		if (carry[key]) lines.push(`  Kept previous ${key}`)
+	}
+	if (carry.stackSummary) lines.push('  Kept previous stack.summary')
+	return lines.join('\n')
+}
+
+// Keep agent-judged fields from a previous run of the same repo's file.
+// Returns { result, carry, skipped }. carry lists what was kept; skipped is set
+// when the existing file belongs to a different repo (no merge).
 export function mergePrevious(next, previous) {
-	if (!previous?.rungs) return next
+	if (!previous?.rungs) return { result: next, carry: null, skipped: null }
+	if (!sameRepo(next, previous)) {
+		return {
+			result: next,
+			carry: null,
+			skipped: {
+				reason: 'different-repo',
+				repo: previous.repo ?? null,
+			},
+		}
+	}
 	const keepRows = (key) => (previous[key] ? { [key]: previous[key] } : {})
-	return {
+	const previousOnly = (previous.verify?.results ?? []).filter(
+		(old) => !next.verify.results.some((r) => r.command === old.command),
+	)
+	const carriedResults = previousOnly.map((result) => ({
+		...result,
+		carriedOver: true,
+	}))
+	const nextFindings = next.findings ?? []
+	const previousFindings = (previous.findings ?? []).filter(
+		(finding) =>
+			!nextFindings.some((n) => findingKey(n) === findingKey(finding)),
+	)
+	const scored = []
+	const mergedRungs = next.rungs.map((rung) => {
+		const old = previous.rungs.find((r) => r.id === rung.id)
+		if (!old) return rung
+		const keptScore =
+			old.score != null ||
+			(old.notes ?? '') !== '' ||
+			old.inferred !== undefined
+		if (keptScore) scored.push(rung.id)
+		return {
+			...rung,
+			score: old.score ?? null,
+			notes: old.notes ?? '',
+			...(old.inferred !== undefined ? { inferred: old.inferred } : {}),
+			evidence: [
+				...new Set([...rung.evidence, ...(old.evidence ?? [])]),
+			].sort(),
+			checked: [...new Set([...rung.checked, ...(old.checked ?? [])])],
+		}
+	})
+	const stackSummary =
+		Boolean(previous.stack?.summary) &&
+		previous.stack.summary !== next.stack.summary
+	const result = {
 		...next,
 		...keepRows('plan'),
 		...keepRows('prs'),
@@ -774,34 +899,31 @@ export function mergePrevious(next, previous) {
 		verify: {
 			...next.verify,
 			// Merge by command: a re-run replaces only that command's result.
-			results: [
-				...(previous.verify?.results ?? []).filter(
-					(old) => !next.verify.results.some((r) => r.command === old.command),
-				),
-				...next.verify.results,
-			],
+			results: [...carriedResults, ...next.verify.results],
 		},
-		findings: [
-			...next.findings,
-			...(previous.findings ?? []).filter(
-				(f) => !next.findings.some((n) => n.text === f.text),
-			),
-		],
-		rungs: next.rungs.map((rung) => {
-			const old = previous.rungs.find((r) => r.id === rung.id)
-			if (!old) return rung
-			return {
-				...rung,
-				score: old.score ?? null,
-				notes: old.notes ?? '',
-				...(old.inferred !== undefined ? { inferred: old.inferred } : {}),
-				evidence: [
-					...new Set([...rung.evidence, ...(old.evidence ?? [])]),
-				].sort(),
-				checked: [...new Set([...rung.checked, ...(old.checked ?? [])])],
-			}
-		}),
+		findings: dedupeFindings([...nextFindings, ...previousFindings]),
+		rungs: mergedRungs,
 	}
+	const carry = {
+		scores: scored,
+		verifyNotRerun: carriedResults.map((r) => r.command),
+		findings: previousFindings.length,
+		plan: Boolean(previous.plan),
+		prs: Boolean(previous.prs),
+		interview: Boolean(previous.interview),
+		host: Boolean(previous.host),
+		stackSummary,
+	}
+	const keptAnything =
+		carry.scores.length ||
+		carry.verifyNotRerun.length ||
+		carry.findings ||
+		carry.plan ||
+		carry.prs ||
+		carry.interview ||
+		carry.host ||
+		carry.stackSummary
+	return { result, carry: keptAnything ? carry : null, skipped: null }
 }
 
 function summarize(result) {
@@ -819,10 +941,7 @@ function summarize(result) {
 				`  ${s.script}: ${s.definition ?? '?'}${s.inCi ? '' : '  (not in CI)'}`,
 		),
 		`Verify candidates: ${result.verify.candidates.map((c) => c.command).join(', ') || 'none'}`,
-		...result.verify.results.map(
-			(r) =>
-				`Ran: ${r.command} → exit ${r.exitCode} (${(r.durationMs / 1000).toFixed(1)}s)`,
-		),
+		...result.verify.results.map((r) => `Ran: ${formatVerifyLine(r)}`),
 		'Findings:',
 		...(result.findings.length
 			? result.findings.map((f) => `  - ${f.text}`)
@@ -844,11 +963,13 @@ export const fieldGuide = `Fill each rung (by hand or with kcd-skills autopilot 
   checked   what you looked for and did not find
   notes     why; required for partial, unknown, n/a, and inferred
   inferred  true when only the human can confirm it
-Add judgment findings with kcd-skills autopilot finding. Re-running with --out keeps these fields.
+Add judgment findings with kcd-skills autopilot finding. Re-running with --out keeps these fields for the same repo and prints what was carried over.
 Host facts (reviewers, merges, branch rules, labels, issues): kcd-skills autopilot host request prints what to gather and the format.`
 
-const usage = `Usage: kcd-skills autopilot audit [repo-dir] [--out audit.json] [--verify "<command>"]... [--timeout seconds]
-Prefills audit JSON; leaves score and notes for the agent. --verify runs a command in the repo and records the result.`
+export const usage = `Usage: kcd-skills autopilot audit [repo-dir] [--out audit.json] [--verify "<command>"]... [--timeout seconds]
+Prefills audit JSON; leaves score and notes for the agent. --verify runs a command in the repo and records the result.
+Default agent output path: .autopilot/before.json (repo-scoped; add .autopilot/ to .gitignore).
+Exit codes: 0 = wrote/printed successfully (verify failures are recorded in the JSON); 1 = usage or I/O error.`
 
 export function parseArgs(args) {
 	const options = { root: '.', out: null, verify: [], timeout: 900 }
@@ -879,29 +1000,41 @@ export function parseArgs(args) {
 	return options
 }
 
-export function main(args = process.argv.slice(2)) {
+export function main(args = process.argv.slice(2), io = console) {
 	const options = parseArgs(args)
 	if (options.help) {
-		console.log(usage)
+		io.log(usage)
 		return 0
 	}
 	if (!existsSync(options.root))
 		throw new Error(`No such directory: ${options.root}`)
 	let result = detect(options.root, options)
 	if (options.out && existsSync(options.out)) {
-		result = mergePrevious(
-			result,
-			JSON.parse(readFileSync(options.out, 'utf8')),
-		)
+		const previous = JSON.parse(readFileSync(options.out, 'utf8'))
+		const { result: merged, carry, skipped } = mergePrevious(result, previous)
+		result = merged
+		if (skipped?.reason === 'different-repo') {
+			const where = skipped.repo?.path
+				? `${skipped.repo.name ?? '?'} at ${skipped.repo.path}`
+				: (skipped.repo?.name ?? 'another repo')
+			io.log(
+				`Not merging ${options.out}: it is from ${where}. Starting fresh for ${result.repo.name}.`,
+			)
+		} else if (carry) {
+			io.log(formatCarryOver(carry))
+		}
 	}
-	console.log(summarize(result))
+	io.log(summarize(result))
 	if (options.out) {
+		mkdirSync(path.dirname(path.resolve(options.out)), { recursive: true })
 		writeFileSync(options.out, `${JSON.stringify(result, null, '\t')}\n`)
-		console.log(`Wrote ${options.out}. ${fieldGuide}`)
+		io.log(`Wrote ${options.out}. ${fieldGuide}`)
 	} else {
-		console.log(JSON.stringify(result, null, '\t'))
+		io.log(JSON.stringify(result, null, '\t'))
 	}
-	return result.verify.results.some((r) => r.exitCode !== 0) ? 2 : 0
+	// Verify failures stay in the JSON; a successful write/print exits 0 so
+	// shell && chains (host request, score, report) can continue.
+	return 0
 }
 
 // Compare real paths so a symlinked temp dir (macOS /var -> /private/var)

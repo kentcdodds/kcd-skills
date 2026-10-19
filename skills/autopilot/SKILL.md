@@ -105,27 +105,35 @@ Leave tracked files unchanged; deploy, publish, release, and push wait for the
 ladder. Installing dependencies is fine. Commands gather facts; you judge:
 
 ```sh
-d="${TMPDIR:-/tmp}/autopilot"; mkdir -p "$d"
-npx kcd-skills@latest autopilot audit . --out "$d/before.json"
+mkdir -p .autopilot
+# Keep audit artifacts out of git (add .autopilot/ to .gitignore if needed).
+npx kcd-skills@latest autopilot audit . --out .autopilot/before.json
 ```
+
+Use a repo-local `.autopilot/` directory (not a shared `$TMPDIR` path).
+Re-running `audit --out` on the same file keeps your scores for this repo and
+prints what was carried over; it will not merge a file written for a different
+repo.
 
 1. **Verify command:** the gate `AGENTS.md` or contributing docs name, else
    `verify.primary`, else each local CI step. Record each by re-running `audit`
-   with `--verify "<command>"` (it keeps your edits).
-2. **Host facts:** `npx kcd-skills@latest autopilot host request` lists what to
-   gather (reviewers, merges, branch rules, labels, issues) and the JSON format.
-   Gather them read-only with the host's CLI, API, or web UI, then
-   `npx kcd-skills@latest autopilot host "$d/before.json" --input facts.json`.
+   with `--verify "<command>"` (it keeps your edits and marks any verify result
+   that was not re-run as carried over).
+2. **Host facts:** `npx kcd-skills@latest autopilot host request` prints JSON on
+   stdout (paste into `--input`) and gathering tips on stderr (reviewers,
+   merges, branch rules, labels, issues). Gather them read-only with the host's
+   CLI, API, or web UI, then
+   `npx kcd-skills@latest autopilot host .autopilot/before.json --input facts.json`.
 3. **Score every rung** against "done when" from evidence (file contents,
    command results):
-   `npx kcd-skills@latest autopilot score "$d/before.json" <rung> <score> --evidence <path> --note "<why>"`.
+   `npx kcd-skills@latest autopilot score .autopilot/before.json <rung> <score> --evidence <path> --note "<why>"`.
    It checks the rung right away. Add judgment calls with
-   `npx kcd-skills@latest autopilot finding "$d/before.json" "<text>" --rung <n>`.
+   `npx kcd-skills@latest autopilot finding .autopilot/before.json "<text>" --rung <n>`.
    If done needs a command (rung 4, restore test), run `--verify` when it needs
    no secrets; else cap at `partial`. Note what may live outside the repo (NAS,
    Kody jobs).
 4. **Report:**
-   `npx kcd-skills@latest autopilot report "$d/before.json" --html "$d/before.html"`.
+   `npx kcd-skills@latest autopilot report .autopilot/before.json --html .autopilot/before.html`.
    Fix every error it lists.
 
 ## 2. Interview
@@ -159,7 +167,7 @@ paths: **Kody yes / no** in `npx kcd-skills@latest autopilot templates`.
   narrows its rung (no previews in 7, no flags in 8); inapplicable rungs are
   `n/a` with `notes` (e.g. a library has no backups).
 - Add one plan row per PR:
-  `npx kcd-skills@latest autopilot plan add "$d/before.json" <rung> --title "<title>" --file <path> --effort S|M|L --door two-way|one-way`
+  `npx kcd-skills@latest autopilot plan add .autopilot/before.json <rung> --title "<title>" --file <path> --effort S|M|L --door two-way|one-way`
   (repeat `--file`; rows stay in ladder order). Re-run the report; show the
   **plan table** and open questions; wait for approval.
 
@@ -186,11 +194,12 @@ change the gates). Edit only if that policy changes.
 
 Hand off once every planned PR is merged or open.
 
-1. Copy `before.json` to `after.json`; re-score merged rungs; add `prs` rows:
+1. Copy `.autopilot/before.json` to `.autopilot/after.json`; re-score merged
+   rungs; add `prs` rows:
    `{ "rung", "url", "status": "merged|open|parked", "note" }`.
 2. Run the verify command and one ship-loop step
    (`npx kcd-skills@latest autopilot ship-pr` or one Kody `tick`) in the target
    repo.
 3. Report
-   `npx kcd-skills@latest autopilot report "$d/after.json" --before "$d/before.json" --html "$d/after.html"`,
+   `npx kcd-skills@latest autopilot report .autopilot/after.json --before .autopilot/before.json --html .autopilot/after.html`,
    those results, what you couldn't verify, and open decisions.

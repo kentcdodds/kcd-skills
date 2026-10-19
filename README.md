@@ -47,13 +47,13 @@ one version has all of them. Node 20+, no runtime dependencies.
 ```sh
 npx kcd-skills@latest --help                 # skills and their commands
 npx kcd-skills@latest <skill>                # print a skill's instructions
-npx kcd-skills@latest autopilot audit . --out audit.json
-npx kcd-skills@latest autopilot score audit.json 1 partial --evidence AGENTS.md --note "why"
-npx kcd-skills@latest autopilot finding audit.json "text" --rung 1
-npx kcd-skills@latest autopilot host request # what to gather from the code host
-npx kcd-skills@latest autopilot host audit.json --input facts.json
-npx kcd-skills@latest autopilot plan add audit.json 1 --title "..." --file AGENTS.md --effort S --door two-way
-npx kcd-skills@latest autopilot report audit.json --html audit.html
+npx kcd-skills@latest autopilot audit . --out .autopilot/before.json
+npx kcd-skills@latest autopilot score .autopilot/before.json 1 partial --evidence AGENTS.md --note "why"
+npx kcd-skills@latest autopilot finding .autopilot/before.json "text" --rung 1
+npx kcd-skills@latest autopilot host request # JSON on stdout; tips on stderr
+npx kcd-skills@latest autopilot host .autopilot/before.json --input facts.json
+npx kcd-skills@latest autopilot plan add .autopilot/before.json 1 --title "..." --file AGENTS.md --effort S --door two-way
+npx kcd-skills@latest autopilot report .autopilot/before.json --html .autopilot/before.html
 npx kcd-skills@latest autopilot ship-pr --input state.json --risk low --json
 npx kcd-skills@latest autopilot templates    # print a reference
 ```

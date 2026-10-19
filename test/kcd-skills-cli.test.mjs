@@ -191,7 +191,44 @@ test('audit, score, finding, host, plan add, and report work end to end', (t) =>
 	assert.equal(rerun.host.host, 'gitlab')
 	assert.equal(rerun.plan.length, 1)
 	const request = cli(['autopilot', 'host', 'request'])
-	assert.match(request.stdout, /"facts"/)
+	assert.equal(request.status, 0)
+	const sample = JSON.parse(request.stdout)
+	assert.equal(typeof sample.host, 'string')
+	assert.ok(Array.isArray(sample.facts))
+	assert.match(request.stderr, /What to look for/)
+})
+
+test('each edit command --help lists that command options only', () => {
+	const score = cli(['autopilot', 'score', '--help'])
+	assert.equal(score.status, 0)
+	assert.match(score.stdout, /Usage: kcd-skills autopilot score /)
+	assert.match(score.stdout, /--evidence|--note|--inferred/)
+	assert.doesNotMatch(score.stdout, /autopilot finding /)
+	assert.doesNotMatch(score.stdout, /autopilot host /)
+
+	const finding = cli(['autopilot', 'finding', '--help'])
+	assert.equal(finding.status, 0)
+	assert.match(finding.stdout, /Usage: kcd-skills autopilot finding /)
+	assert.doesNotMatch(finding.stdout, /autopilot score /)
+
+	const host = cli(['autopilot', 'host', '--help'])
+	assert.equal(host.status, 0)
+	assert.match(host.stdout, /Usage: kcd-skills autopilot host <audit\.json>/)
+	assert.doesNotMatch(host.stdout, /autopilot score /)
+
+	const hostRequest = cli(['autopilot', 'host', 'request', '--help'])
+	assert.equal(hostRequest.status, 0)
+	assert.match(hostRequest.stdout, /Usage: kcd-skills autopilot host request/)
+
+	const plan = cli(['autopilot', 'plan', 'add', '--help'])
+	assert.equal(plan.status, 0)
+	assert.match(plan.stdout, /Usage: kcd-skills autopilot plan add /)
+	assert.doesNotMatch(plan.stdout, /autopilot score /)
+
+	const audit = cli(['autopilot', 'audit', '--help'])
+	assert.equal(audit.status, 0)
+	assert.match(audit.stdout, /Exit codes: 0 =/)
+	assert.match(audit.stdout, /\.autopilot\/before\.json/)
 })
 
 test('audit edits report only problems with what they touched', () => {

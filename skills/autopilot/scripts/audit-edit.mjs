@@ -4,28 +4,30 @@
 //   finding <audit.json> "text" [--rung N]
 //   plan-add <audit.json> <rung> --title text --file path... --effort S|M|L --door two-way|one-way
 //   host <audit.json> --input facts.json|-   (facts the agent gathered from the code host)
-//   host-request                              (prints what to gather and the format)
+//   host-request                              (prints JSON to gather; guidance on stderr)
 // Each edit writes the file, then prints the validator's problems for what it
 // touched (exit 1 when there are any).
 import { readFileSync, writeFileSync } from 'node:fs'
 import { rungs, scores, validate } from './audit-report.mjs'
 
-export const hostRequest = `Host facts for the audit. Gather them read-only with whatever reaches the code host
+// Parseable sample for --input. Guidance lives in hostRequestGuide (stderr).
+export const hostRequestSample = {
+	host: 'github',
+	facts: [
+		{
+			rung: 7,
+			text: 'AI reviewer cursor[bot] reviewed 9 of the last 10 merged PRs',
+			evidence: 'the host command or URL that shows this',
+		},
+	],
+}
+
+export const hostRequestGuide = `Host facts for the audit. Gather them read-only with whatever reaches the code host
 (its CLI, API, or web UI), then record them:
   kcd-skills autopilot host <audit.json> --input facts.json   (or --input - for stdin)
 
-Format (JSON):
-{
-  "host": "github",                 // github | gitlab | bitbucket | gitea | other
-  "facts": [
-    {
-      "rung": 7,                    // 1-12, the rung the fact informs (optional)
-      "text": "AI reviewer cursor[bot] reviewed 9 of the last 10 merged PRs",
-      "evidence": "gh pr list --state merged --limit 10 --json reviews"
-                                    // the command or URL that shows it
-    }
-  ]
-}
+Stdout is a JSON sample you can paste into --input (host: github | gitlab | bitbucket | gitea | other).
+Each fact may include optional rung (1-12), text (what you found), and evidence (command or URL).
 
 What to look for (skip what the host does not have; say so in a fact):
   1  branch protection or rulesets on the default branch: required checks and reviews
@@ -34,6 +36,11 @@ What to look for (skip what the host does not have; say so in a fact):
   10 friction and friction-skipped labels; open friction issues
   11 open Cleanup: issues and whether each has a "ready when"
   For each missing file the audit reports in a workflow: when that workflow last succeeded.`
+
+// Back-compat alias: older callers may read hostRequest as the full text blob.
+export const hostRequest = `${hostRequestGuide}
+
+${JSON.stringify(hostRequestSample, null, 2)}`
 
 const readAudit = (file, read) => {
 	try {
@@ -153,12 +160,21 @@ export function addHostFacts(audit, input) {
 	return []
 }
 
-export const usage = `Usage: kcd-skills autopilot score <audit.json> <rung> <done|partial|missing|unknown|n/a> [--evidence path]... [--checked text]... [--note text] [--inferred]
-       kcd-skills autopilot finding <audit.json> "text" [--rung N]
-       kcd-skills autopilot plan add <audit.json> <rung> --title text --file path... --effort S|M|L --door two-way|one-way
-       kcd-skills autopilot host request
-       kcd-skills autopilot host <audit.json> --input facts.json|-
-Each edit writes the audit and prints any problems with what it changed (exit 1).`
+export const usages = {
+	score: `Usage: kcd-skills autopilot score <audit.json> <rung> <done|partial|missing|unknown|n/a> [--evidence path]... [--checked text]... [--note text] [--inferred]
+Score one rung, write the audit, and print any problems with that rung (exit 1).`,
+	finding: `Usage: kcd-skills autopilot finding <audit.json> "text" [--rung N]
+Add a finding, write the audit, and print any problems with that finding (exit 1).`,
+	'plan-add': `Usage: kcd-skills autopilot plan add <audit.json> <rung> --title text --file path... --effort S|M|L --door two-way|one-way
+Add or replace a plan row for a rung, write the audit, and print any problems with that row (exit 1).`,
+	host: `Usage: kcd-skills autopilot host <audit.json> --input facts.json|-
+Record code-host facts you gathered. --input is JSON (see host request). Writes the audit (exit 1 on bad input).`,
+	'host-request': `Usage: kcd-skills autopilot host request
+Print a JSON sample on stdout (paste into host --input) and gathering guidance on stderr.`,
+}
+
+// Combined string kept for error messages that do not know the command yet.
+export const usage = Object.values(usages).join('\n')
 
 const defaultIo = {
 	read: (file) => readFileSync(file === '-' ? 0 : file, 'utf8'),
@@ -168,12 +184,14 @@ const defaultIo = {
 }
 
 export function main(command, args, io = defaultIo) {
+	const commandUsage = usages[command] ?? usage
 	if (args.includes('--help') || args.includes('-h')) {
-		io.log(usage)
+		io.log(commandUsage)
 		return 0
 	}
 	if (command === 'host-request') {
-		io.log(hostRequest)
+		io.error(hostRequestGuide)
+		io.log(`${JSON.stringify(hostRequestSample, null, '\t')}\n`)
 		return 0
 	}
 	let flags
@@ -188,7 +206,7 @@ export function main(command, args, io = defaultIo) {
 			bool: ['inferred'],
 		})
 		const [target, rung, score, ...extra] = flags._
-		if (!score || extra.length) throw new Error(usage)
+		if (!score || extra.length) throw new Error(commandUsage)
 		file = target
 		audit = readAudit(file, io.read)
 		const id = rungId(rung)
@@ -202,7 +220,7 @@ export function main(command, args, io = defaultIo) {
 	} else if (command === 'finding') {
 		flags = parseFlags(args, { single: ['rung'] })
 		const [target, text, ...extra] = flags._
-		if (!text || extra.length) throw new Error(usage)
+		if (!text || extra.length) throw new Error(commandUsage)
 		file = target
 		audit = readAudit(file, io.read)
 		problems = addFinding(
@@ -217,7 +235,7 @@ export function main(command, args, io = defaultIo) {
 			single: ['title', 'effort', 'door'],
 		})
 		const [target, rung, ...extra] = flags._
-		if (!rung || extra.length) throw new Error(usage)
+		if (!rung || extra.length) throw new Error(commandUsage)
 		file = target
 		audit = readAudit(file, io.read)
 		const id = rungId(rung)
@@ -233,7 +251,7 @@ export function main(command, args, io = defaultIo) {
 		flags = parseFlags(args, { single: ['input'] })
 		const [target, ...extra] = flags._
 		if (!target || !flags.input || extra.length) {
-			io.error(`${usage}\n\n${hostRequest}`)
+			io.error(`${commandUsage}\n\n${hostRequestGuide}`)
 			return 1
 		}
 		file = target
