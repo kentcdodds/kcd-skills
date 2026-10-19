@@ -189,7 +189,7 @@ test('ship-pr --input decides from agent-supplied state on any host', () => {
 	const options = { input: 'state.json', risk: 'low', merge: true }
 	const run = (state) =>
 		runWithInput(options, config, () => JSON.stringify(state)).decision
-	const draft = run({ number: 4, state: 'OPEN', draft: true })
+	const draft = run({ number: 4, state: 'OPEN', draft: true, checks: [] })
 	assert.equal(draft.step, 'mark-ready')
 	assert.equal(draft.command, undefined)
 	assert.match(draft.reason, /with your tools, then run again/)
@@ -207,6 +207,24 @@ test('ship-pr --input decides from agent-supplied state on any host', () => {
 			checks: [{ name: 'ci', status: 'pending' }],
 		}).step,
 		'wait',
+	)
+	assert.throws(
+		() => readState({ number: 4, state: 'OPEN' }),
+		/checks must be an array/,
+	)
+	// GitHub-style keys mixed with host-neutral ones use the host-neutral fields.
+	assert.equal(
+		run({
+			number: 4,
+			state: 'OPEN',
+			isDraft: false,
+			checks: [{ name: 'ci', status: 'failure' }],
+		}).step,
+		'fix-ci',
+	)
+	assert.throws(
+		() => readState({ number: 4, state: 'OPEN', isDraft: false }),
+		/needs commits/,
 	)
 	assert.throws(
 		() => readState({ number: 4, state: 'open', checks: [{}] }),
@@ -234,7 +252,7 @@ test('ship-pr explains how to supply state when gh is unavailable', (t) => {
 	assert.match(result.stderr, /ship-pr --input state\.json/)
 	writeFileSync(
 		path.join(dir, 'state.json'),
-		JSON.stringify({ number: 12, state: 'MERGED' }),
+		JSON.stringify({ number: 12, state: 'MERGED', checks: [] }),
 	)
 	const merged = cli(
 		['autopilot', 'ship-pr', '--input', 'state.json', '--json'],

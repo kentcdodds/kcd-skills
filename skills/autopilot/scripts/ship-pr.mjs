@@ -459,7 +459,7 @@ export const stateSchema = `PR state for --input (JSON object). Gather it with w
   "mergeSha": null,                   // merge commit once merged
   "reviewDecision": null,             // CHANGES_REQUESTED when a reviewer asked for changes
   "checks": [{ "name": "ci", "status": "success", "url": "..." }],
-                                      // status: success | failure | pending | neutral
+                                      // required ([] for none); status: success | failure | pending | neutral
   "reviews": [{ "login": "cursor[bot]", "state": "COMMENTED" }],
   "approvedByHuman": false,           // a person (not a configured AI reviewer) approved
   "unresolvedThreads": [{ "id": "t1", "path": "src/a.ts", "line": 3, "author": "cursor[bot]", "body": "...", "url": "..." }]
@@ -475,13 +475,34 @@ export function readState(input, config = {}) {
 	if (!input || typeof input !== 'object' || Array.isArray(input)) {
 		throw new Error('PR state must be a JSON object (see --schema)')
 	}
+	const normalizedKeys = [
+		'draft',
+		'conflicts',
+		'behind',
+		'checks',
+		'reviews',
+		'unresolvedThreads',
+		'approvedByHuman',
+	]
 	const graphql =
 		input.data?.repository ||
 		input.repository ||
 		input.pullRequest ||
-		'isDraft' in input ||
-		'latestReviews' in input
-	if (graphql) return normalize(input, config)
+		(('isDraft' in input || 'latestReviews' in input) &&
+			!normalizedKeys.some((key) => key in input))
+	if (graphql) {
+		const pr =
+			input.data?.repository?.pullRequest ??
+			input.repository?.pullRequest ??
+			input.pullRequest ??
+			input
+		if (!pr?.commits?.nodes?.length) {
+			throw new Error(
+				'GitHub GraphQL state needs commits.nodes[].commit.statusCheckRollup (see --schema)',
+			)
+		}
+		return normalize(input, config)
+	}
 	const errors = []
 	if (!Number.isInteger(input.number) && typeof input.url !== 'string') {
 		errors.push('number (integer) or url (string) is required')
@@ -494,7 +515,10 @@ export function readState(input, config = {}) {
 			errors.push(`${key} must be a boolean`)
 		}
 	}
-	for (const key of ['checks', 'reviews', 'unresolvedThreads']) {
+	if (!Array.isArray(input.checks)) {
+		errors.push('checks must be an array ([] when the PR has no checks)')
+	}
+	for (const key of ['reviews', 'unresolvedThreads']) {
 		if (input[key] !== undefined && !Array.isArray(input[key])) {
 			errors.push(`${key} must be an array`)
 		}
@@ -529,7 +553,7 @@ export function readState(input, config = {}) {
 		headSha: input.headSha,
 		mergeSha: input.mergeSha ?? undefined,
 		reviewDecision: input.reviewDecision ?? null,
-		checks: input.checks ?? [],
+		checks: input.checks,
 		reviews: input.reviews ?? [],
 		approvedByHuman: input.approvedByHuman ?? false,
 		unresolvedThreads: input.unresolvedThreads ?? [],

@@ -4,7 +4,7 @@
 // and scripts ship in this package, so one version holds all of them.
 import { existsSync, readdirSync, readFileSync, realpathSync } from 'node:fs'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 
 const root = path.resolve(import.meta.dirname, '..')
 const skillsDir = path.join(root, 'skills')
@@ -12,8 +12,11 @@ const { version } = JSON.parse(
 	readFileSync(path.join(root, 'package.json'), 'utf8'),
 )
 
+// File URLs, so absolute Windows paths (C:\...) import too.
 const script = (skill, name) =>
-	import(path.join(skillsDir, skill, 'scripts', `${name}.mjs`))
+	import(
+		pathToFileURL(path.join(skillsDir, skill, 'scripts', `${name}.mjs`)).href
+	)
 
 // Script-backed commands per skill. Each run returns an exit code.
 export const commands = {

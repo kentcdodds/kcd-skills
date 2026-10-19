@@ -78,7 +78,9 @@ with whatever tools reach the host.
    a thin `ship-pr` skill.
 7. Reviewers + previews: AI reviewers per tier scrutinize test-expectation
    changes made with the code they test; previews for production-like changes;
-   agent merge; running-version check after deploy.
+   agent merge; running-version check after deploy. Reviewers check each PR
+   against the project's principles (when it has them), and each principle a
+   machine can check becomes a lint rule or test.
 
 **P3 Blast radius**
 
