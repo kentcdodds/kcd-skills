@@ -858,10 +858,18 @@ export function mergePrevious(next, previous) {
 		...result,
 		carriedOver: true,
 	}))
-	const nextFindings = next.findings ?? []
+	// Match by key or by text, so a saved finding without `ref` still
+	// collapses into the detected one.
+	const nextKeys = new Set(
+		(next.findings ?? []).flatMap((n) => [
+			findingKey(n),
+			`text:${n.text ?? ''}`,
+		]),
+	)
 	const previousFindings = (previous.findings ?? []).filter(
 		(finding) =>
-			!nextFindings.some((n) => findingKey(n) === findingKey(finding)),
+			!nextKeys.has(findingKey(finding)) &&
+			!nextKeys.has(`text:${finding.text ?? ''}`),
 	)
 	const scored = []
 	const mergedRungs = next.rungs.map((rung) => {
@@ -901,7 +909,7 @@ export function mergePrevious(next, previous) {
 			// Merge by command: a re-run replaces only that command's result.
 			results: [...carriedResults, ...next.verify.results],
 		},
-		findings: dedupeFindings([...nextFindings, ...previousFindings]),
+		findings: dedupeFindings([...(next.findings ?? []), ...previousFindings]),
 		rungs: mergedRungs,
 	}
 	const carry = {

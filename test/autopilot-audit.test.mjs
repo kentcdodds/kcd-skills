@@ -484,6 +484,21 @@ test('dedupeFindings collapses missing-path duplicates by file and ref', () => {
 	assert.equal(result.findings.length, 2)
 })
 
+test('mergePrevious collapses a saved finding that has no ref into the detected one', () => {
+	const detected = {
+		text: 'ci.yml:3 references server/register-hooks.mjs, which does not exist',
+		file: 'ci.yml',
+		ref: 'server/register-hooks.mjs',
+		rung: 1,
+	}
+	const saved = { text: detected.text, file: 'ci.yml', rung: 1 }
+	const { result } = mergePrevious(
+		{ ...validAudit(), findings: [detected], verify: { results: [] } },
+		validAudit({ findings: [saved] }),
+	)
+	assert.deepEqual(result.findings, [detected])
+})
+
 test('formatVerifyLine skips missing durationMs and marks carried-over results', () => {
 	assert.equal(
 		formatVerifyLine({ command: 'npm run validate', exitCode: 1 }),
