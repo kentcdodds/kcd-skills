@@ -44,7 +44,7 @@ export const rungs = [
 	{
 		id: 12,
 		pillar: 'improve',
-		name: 'Signal pipelines + cron agents',
+		name: 'Signals + cleanup cron agents',
 		needs: [10, 11],
 	},
 ]

@@ -179,6 +179,42 @@ fork and reconfigure for your stack, not the only way.
 (use the repo's script folder), write `.github/ship-pr.json` from the interview
 form, and use the issue form and CI cron.
 
+## Cleanup automations (rung 12)
+
+Recommended agents: four on a schedule, plus event-driven errors → issues. Each
+one opens a PR (one per run, none when there is nothing to do; errors → issues
+files the issue first, then a PR once the cause is clear) and goes through the
+ship loop like any other change.
+
+| Automation                        | When                                    | Opens a PR that…                                                                                                |
+| --------------------------------- | --------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Legacy reaper                     | Weekly                                  | removes dead code, expired flags (rung 8 removal conditions), and `Cleanup:` items whose "ready when" holds     |
+| Test pruning (`keep-tests-tight`) | Daily; skip if no commits in 24h        | deletes redundant, flaky, or implementation-detail tests while keeping behavior covered                         |
+| Docs freshness                    | Daily; skip if no commits in 24h        | fixes `AGENTS.md`, README, and decisions that recent commits made stale                                         |
+| Friction sweep                    | Daily                                   | fixes open `friction` issues; closes fixed or invalid ones with a note                                          |
+| Errors → issues                   | On a new error group or failing prod CI | files one deduped issue per error (repro, link, no secrets or user data), then a fix PR when the cause is clear |
+
+**Merge gate (risk tiers from the interview):** only low- and medium-risk PRs
+auto-merge, only with green CI, and never beyond the **Agent may merge** answer.
+Medium still needs its AI reviewer (+ preview). High risk, red or pending CI,
+and anything in **Always human** park for the human.
+
+**Kody yes:** fork
+[`@kentcdodds/codebase-cleanup`](https://kody.codes/@kentcdodds/codebase-cleanup)
+(legacy reaper, docs freshness, keep-tests-tight, prod CI failure → fix agent)
+and [`@kentcdodds/friction-log`](https://kody.codes/@kentcdodds/friction-log)
+(daily friction sweep). They are **Kent's defaults**: every automation starts
+disabled with no repos, so you list repos and a notify target, then enable the
+ones you want. The package is hidden from Kody search; this link is how you find
+it. A template to fork and adapt, not required.
+
+**Kody no:** one scheduled CI workflow per automation (`schedule:` cron, or a
+scheduled pipeline) that launches your coding agent with the same prompt and
+merge gate. Trigger errors → issues from your error tracker's alert webhook
+(`repository_dispatch`) or a failed default-branch `workflow_run`, not a
+schedule. Name the files after the automation (for example
+`.github/workflows/legacy-reaper.yml`) so the audit finds them.
+
 ## Ship-PR loop
 
 Prose loops wander: each agent re-reads and re-interprets them. Put the
