@@ -519,6 +519,33 @@ test('dedupeFindings collapses missing-path duplicates by file and ref', () => {
 	assert.equal(result.findings.length, 2)
 })
 
+test('mergePrevious reports kept triage', () => {
+	const triage = {
+		system: 'labels',
+		priorities: ['P0', 'P1', 'P2', 'P3'],
+		decision: 'needs-decision',
+		existing: false,
+		evidence: 'interview',
+	}
+	const next = {
+		...validAudit(),
+		findings: [],
+		verify: { results: [] },
+		rungs: validAudit().rungs.map((r) => ({
+			...r,
+			score: null,
+			notes: '',
+			evidence: [],
+			checked: [],
+		})),
+	}
+	const previous = { ...next, triage }
+	const { result, carry } = mergePrevious(next, previous)
+	assert.deepEqual(result.triage, triage)
+	assert.equal(carry.triage, true)
+	assert.match(formatCarryOver(carry), /Kept previous triage/)
+})
+
 test('mergePrevious collapses a saved finding that has no ref into the detected one', () => {
 	const detected = {
 		text: 'ci.yml:3 references server/register-hooks.mjs, which does not exist',

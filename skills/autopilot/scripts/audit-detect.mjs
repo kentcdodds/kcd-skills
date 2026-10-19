@@ -839,7 +839,7 @@ export function formatCarryOver(carry) {
 	if (carry.findings) {
 		lines.push(`  Kept ${carry.findings} finding(s) from the previous file`)
 	}
-	for (const key of ['plan', 'prs', 'interview', 'host']) {
+	for (const key of ['plan', 'prs', 'interview', 'host', 'triage']) {
 		if (carry[key]) lines.push(`  Kept previous ${key}`)
 	}
 	if (carry.stackSummary) lines.push('  Kept previous stack.summary')
@@ -965,6 +965,7 @@ export function mergePrevious(next, previous) {
 		prs: Boolean(previous.prs),
 		interview: Boolean(previous.interview),
 		host: Boolean(previous.host),
+		triage: Boolean(previous.triage),
 		stackSummary,
 	}
 	const keptAnything =
@@ -975,6 +976,7 @@ export function mergePrevious(next, previous) {
 		carry.prs ||
 		carry.interview ||
 		carry.host ||
+		carry.triage ||
 		carry.stackSummary
 	return { result, carry: keptAnything ? carry : null, skipped: null }
 }
