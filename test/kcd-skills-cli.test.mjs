@@ -64,6 +64,40 @@ test('a skill with no command prints its instructions for this version', () => {
 	assert.match(cli(['autopilot', 'templates']).stdout, /^# Templates/)
 })
 
+test('<skill> --help lists that skill commands', () => {
+	for (const flag of ['--help', '-h', 'help']) {
+		const result = cli(['autopilot', flag])
+		assert.equal(result.status, 0, result.stderr)
+		assert.match(result.stdout, /^kcd-skills \S+ autopilot\n/)
+		for (const command of [
+			'audit',
+			'score',
+			'host',
+			'plan',
+			'report',
+			'ship-pr',
+			'templates',
+		]) {
+			assert.match(result.stdout, new RegExp(`autopilot ${command} `))
+		}
+	}
+	const noCommands = cli(['ship-pr', '--help'])
+	assert.equal(noCommands.status, 0, noCommands.stderr)
+	assert.match(
+		noCommands.stdout,
+		/npx kcd-skills@latest ship-pr +print the skill instructions/,
+	)
+	assert.doesNotMatch(noCommands.stdout, /Commands:/)
+	const references = cli(['visual-recap', '-h'])
+	assert.equal(references.status, 0)
+	assert.match(references.stdout, /visual-recap block-format/)
+	// A command's own --help still reaches the command.
+	assert.match(
+		cli(['autopilot', 'audit', '--help']).stdout,
+		/Usage: kcd-skills autopilot audit/,
+	)
+})
+
 test('unknown skills and commands exit 1 and list what exists', () => {
 	const command = cli(['autopilot', 'nope'])
 	assert.equal(command.status, 1)
