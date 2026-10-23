@@ -34,7 +34,8 @@ Each fact may include optional rung (1-13), text (what you found), and evidence 
 What to look for (skip what the host does not have; say so in a fact):
   1  branch protection or rulesets on the default branch: required checks and reviews
      (setup applies these via the host API after the one setup PR merges, once those
-     checks have run on the default branch; record what exists today)
+     checks have run on the default branch, or right away when every plan row is
+     settings-only and there is no setup PR; record what exists today)
   6  who merges recent PRs, and whether they merged with failing or pending checks
   7  reviewers and AI-reviewer checks on recent PRs; release or deploy run history
   10 friction and friction-skipped labels; open friction issues
