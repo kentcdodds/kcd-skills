@@ -180,16 +180,20 @@ Kody yes/no paths: **Kody yes / no** in
 ## 3. Plan
 
 - `missing` or `partial`: one plan row that finishes the rung (include
-  findings). All planned rows ship in a single setup PR (see Ladder). `done`:
-  none. `unknown`: ask or verify; if still unknown, open question, no plan row.
+  findings). Rows with file changes ship together in a single setup PR (see
+  Ladder). `done`: none. `unknown`: ask or verify; if still unknown, open
+  question, no plan row.
 - Rungs keep ladder order whatever the answers. A `none` answer (or default)
   narrows its rung (no previews in 7, no flags in 8); inapplicable rungs are
   `n/a` with `notes` (e.g. a library has no backups).
 - Add one plan row per partial/missing rung:
-  `npx kcd-skills@latest autopilot plan add .autopilot/before.json <rung> --title "<title>" --file <path> --effort S|M|L --door two-way|one-way`
-  (repeat `--file`; rows stay in ladder order). Re-run the report; show the
-  **plan table**, open questions, and the **human checklist** (below); wait for
-  approval.
+  `npx kcd-skills@latest autopilot plan add .autopilot/before.json <rung> --title "<title>" [--file <path>] --effort S|M|L --door two-way|one-way`
+  (repeat `--file` when the rung needs tracked files; omit `--file` for a
+  settings-only or human-only row; the report shows those as `(settings only)`).
+  Rows stay in ladder order. Re-run the report; show the **plan table**, open
+  questions, and the **human checklist** (below); wait for approval.
+- If every plan row is settings-only (no file paths), open **no** setup PR.
+  Apply the host settings, send the human checklist, and hand off.
 
 **Human checklist (plan time):** Before asking for approval, list every step
 only the human can do. For each item: what to do, where (URL, UI path, or
@@ -215,10 +219,12 @@ the same checklist in the setup PR body (templates → **Setup PR body**).
 
 Adapt the templates: `npx kcd-skills@latest autopilot templates`.
 
-Open **exactly one** setup pull request. That PR carries every file change for
-every planned rung: workflows, configs, docs, skills, issue forms, label files,
-and so on. Do not open a second PR for leftover files, for `pull_request_target`
-/ `workflow_run` workflows, or for repo settings.
+When at least one plan row lists files, open **exactly one** setup pull request.
+That PR carries every file change for every planned rung: workflows, configs,
+docs, skills, issue forms, label files, and so on. Do not open a second PR for
+leftover files, for `pull_request_target` / `workflow_run` workflows, or for
+repo settings. Settings-only rows stay out of the PR and are handled after merge
+(or immediately when there is no PR).
 
 **What goes in the PR:** only tracked files. Adapt templates per rung; follow
 plan-table **Needs** as the order to write and verify content inside that one PR
@@ -230,9 +236,11 @@ plan-table **Needs** as the order to write and verify content inside that one PR
    status checks, required reviews, and similar host settings. Apply them with
    the host API (on GitHub: REST/GraphQL via `gh` or the API) right after the
    setup PR merges. Do not open another PR for them.
-2. **Required checks:** wait until each check you will require has run at least
-   once on the default branch after the merge (the first post-merge workflow
-   run). Then add those check names to protection. Requiring a check that has
+2. **Required checks:** before merge, ensure each planned required check has a
+   default-branch trigger (for example `push`) or another way to run after
+   merge. Then wait until each check you will require has run at least once on
+   the default branch after the merge (the first post-merge workflow run). Add
+   those check names to protection only after that. Requiring a check that has
    never run on the default branch fails or no-ops on some hosts.
 3. **Default-branch-only behavior:** workflows that only take effect from the
    default branch (`pull_request_target`, `workflow_run`, some environment
@@ -258,13 +266,15 @@ needed; leave nothing implied.
 
 ## 5. Hand off
 
-Hand off once the setup PR is merged or open, post-merge settings are applied or
-listed, and the human checklist is current.
+Hand off once the setup PR is merged or open (or was skipped because the plan
+was settings-only), post-merge or immediate settings are applied or listed, and
+the human checklist is current.
 
 1. Copy `.autopilot/before.json` to `.autopilot/after.json`; re-score rungs the
-   setup covered; add `prs` rows that all point at that one setup PR:
-   `{ "rung", "url", "status": "merged|open|parked", "note" }` (same `url` for
-   every planned rung; use `note` for post-merge or manual leftovers).
+   setup covered; when there was a setup PR, add `prs` rows that all point at
+   it: `{ "rung", "url", "status": "merged|open|parked", "note" }` (same `url`
+   for every planned rung; use `note` for post-merge or manual leftovers). For
+   settings-only hand-off with no PR, skip `prs` or note that in `note`.
 2. Run the verify command and one ship-loop step
    (`npx kcd-skills@latest autopilot ship-pr` or one Kody `tick`) in the target
    repo.

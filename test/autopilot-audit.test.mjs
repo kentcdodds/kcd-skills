@@ -731,8 +731,10 @@ test('validate enforces plan rules for partial, unknown, done, and order', () =>
 		),
 	)
 	assert.ok(
-		errorsFor([{ ...plan[0], effort: 'XL', door: 'maybe', files: [] }, plan[1]])
-			.length >= 3,
+		errorsFor([
+			{ ...plan[0], effort: 'XL', door: 'maybe', files: ['bad'] },
+			plan[1],
+		]).length >= 2,
 	)
 	assert.ok(
 		errorsFor([{ ...plan[0], pillar: 'review' }, plan[1]]).some((e) =>
@@ -743,6 +745,42 @@ test('validate enforces plan rules for partial, unknown, done, and order', () =>
 		validate(
 			validAudit({ prs: [{ rung: 1, url: 'u', status: 'closed' }] }),
 		).some((e) => /prs\[0\]\.status/.test(e)),
+	)
+})
+
+test('validate and plan table allow settings-only rows with empty files', () => {
+	const settingsOnly = [
+		{
+			rung: 1,
+			title: 'Require CI checks on the default branch',
+			files: [],
+			effort: 'S',
+			door: 'two-way',
+		},
+		{
+			rung: 2,
+			title: 'Seed decisions',
+			files: ['docs/decisions/README.md'],
+			effort: 'S',
+			door: 'two-way',
+		},
+	]
+	assert.deepEqual(validate(validAudit({ plan: settingsOnly })), [])
+	const table = planTable(validAudit({ plan: settingsOnly }))
+	assert.match(
+		table,
+		/\| 1 \| P1 \| Require CI checks on the default branch \| \(settings only\) \| S \| two-way \|/,
+	)
+	assert.match(
+		table,
+		/\| 2 \| P1 \| Seed decisions \| docs\/decisions\/README\.md \|/,
+	)
+	assert.ok(
+		validate(
+			validAudit({
+				plan: [{ ...settingsOnly[0], files: null }, settingsOnly[1]],
+			}),
+		).some((e) => /files must be an array/.test(e)),
 	)
 })
 

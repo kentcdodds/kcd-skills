@@ -34,17 +34,19 @@ renders it (`--json` prints `{ ok, errors, summary }` only).
 		},
 	],
 	// Plan step: one row per partial/missing rung, ladder order.
-	// All rows ship together in a single setup PR (see SKILL Ladder).
+	// Rows with files ship together in one setup PR; files: [] is settings-only
+	// (report shows "(settings only)"). If every row is settings-only, no PR.
 	"plan": [
 		{
 			"rung": 1,
 			"title": "Run the full verify command in CI",
-			"files": [".github/workflows/ci.yml"],
+			"files": [".github/workflows/ci.yml"], // [] = settings only
 			"effort": "S", // S | M | L
 			"door": "two-way", // two-way | one-way
 		},
 	],
-	// Hand-off step: one setup PR URL repeated for each planned rung.
+	// Hand-off step: one setup PR URL repeated for each planned rung (omit when
+	// the plan was settings-only and no PR opened).
 	"prs": [
 		{ "rung": 1, "url": "https://…/pull/12", "status": "open", "note": "" },
 	],

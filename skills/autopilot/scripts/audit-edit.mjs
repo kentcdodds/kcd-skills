@@ -2,7 +2,7 @@
 // judgments with one command instead of hand-editing JSON:
 //   score <audit.json> <rung> <score> [--evidence x]... [--checked x]... [--note text] [--inferred]
 //   finding <audit.json> "text" [--rung N]
-//   plan-add <audit.json> <rung> --title text --file path... --effort S|M|L --door two-way|one-way
+//   plan-add <audit.json> <rung> --title text [--file path]... --effort S|M|L --door two-way|one-way
 //   host <audit.json> --input facts.json|-   (facts the agent gathered from the code host)
 //   host-request                              (prints JSON to gather; guidance on stderr)
 //   triage <audit.json> --input triage.json|-  (the team's priority scheme and decision marker)
@@ -207,8 +207,8 @@ export const usages = {
 Score one rung, write the audit, and print any problems with that rung (exit 1).`,
 	finding: `Usage: kcd-skills autopilot finding <audit.json> "text" [--rung N]
 Add a finding, write the audit, and print any problems with that finding (exit 1).`,
-	'plan-add': `Usage: kcd-skills autopilot plan add <audit.json> <rung> --title text --file path... --effort S|M|L --door two-way|one-way
-Add or replace a plan row for a rung (all rows ship in one setup PR), write the audit, and print any problems with that row (exit 1).`,
+	'plan-add': `Usage: kcd-skills autopilot plan add <audit.json> <rung> --title text [--file path]... --effort S|M|L --door two-way|one-way
+Add or replace a plan row for a rung (file rows ship in one setup PR; omit --file for settings-only). Writes the audit and prints any problems with that row (exit 1).`,
 	host: `Usage: kcd-skills autopilot host <audit.json> --input facts.json|-
 Record code-host facts you gathered. --input is JSON (see host request). Writes the audit (exit 1 on bad input).`,
 	'host-request': `Usage: kcd-skills autopilot host request

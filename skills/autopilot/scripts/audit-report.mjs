@@ -284,8 +284,8 @@ function validatePlan(audit, err) {
 		if (row.pillar !== undefined && row.pillar !== rung.pillar)
 			err(`${where}.pillar must be "${rung.pillar}"`)
 		if (!isText(row.title)) err(`${where}.title must be a non-empty string`)
-		if (!isStringArray(row.files) || row.files.length === 0)
-			err(`${where}.files must list at least one path`)
+		if (!Array.isArray(row.files) || !isStringArray(row.files))
+			err(`${where}.files must be an array of paths (empty = settings only)`)
 		if (!efforts.includes(row.effort))
 			err(`${where}.effort must be one of ${efforts.join(', ')}`)
 		if (!doors.includes(row.door))
@@ -337,7 +337,7 @@ function planRows(audit) {
 			rung: row.rung,
 			pillar: pillars[rung.pillar].split(' · ')[0],
 			title: row.title,
-			files: row.files.join(', '),
+			files: row.files.length ? row.files.join(', ') : '(settings only)',
 			effort: row.effort,
 			door: row.door,
 			needs: needs.length ? needs.join(', ') : '-',
