@@ -34,26 +34,32 @@ renders it (`--json` prints `{ ok, errors, summary }` only).
 		},
 	],
 	// Plan step: one row per partial/missing rung, ladder order.
+	// Rows with files ship together in one setup PR; files: [] is settings-only
+	// (report shows "(settings only)"). If every row is settings-only, no PR.
 	"plan": [
 		{
 			"rung": 1,
 			"title": "Run the full verify command in CI",
-			"files": [".github/workflows/ci.yml"],
+			"files": [".github/workflows/ci.yml"], // [] = settings only
 			"effort": "S", // S | M | L
 			"door": "two-way", // two-way | one-way
 		},
 	],
-	// Hand-off step.
+	// Hand-off step: one setup PR URL repeated for each planned rung (omit when
+	// the plan was settings-only and no PR opened).
 	"prs": [
 		{ "rung": 1, "url": "https://…/pull/12", "status": "open", "note": "" },
 	],
 }
 ```
 
-## Merge-order dependency map
+## Rung dependency map (inside the one setup PR)
 
-The report computes each plan row's Pillar and Needs. **Needs** (merge first;
-edit here and keep `audit-report.mjs` `rungs[].needs` in sync):
+The report computes each plan row's Pillar and Needs. **Needs** are other rungs
+whose work this row depends on (already done, or included in the same setup PR).
+Use them to order writing and verification inside that one PR; they are not a
+reason to open more PRs. Edit here and keep `audit-report.mjs` `rungs[].needs`
+in sync:
 
 - 1 before all
 - 5 before 6 and 12
@@ -64,6 +70,52 @@ edit here and keep `audit-report.mjs` `rungs[].needs` in sync):
 - 10, 11, and 12 before 13
 
 Needs that are done or `n/a` drop out.
+
+## Setup PR body
+
+The setup PR description must include a **Human checklist** section. Copy the
+plan-time checklist into it; after merge, the agent re-sends only what is still
+open. Use this shape (fill every blank; write `none` when a category does not
+apply):
+
+```md
+## Human checklist
+
+Autopilot setup is one PR for all file changes. Repo settings that are not files
+(branch protection, required checks) are applied by the agent via the host API
+after this PR merges, once those checks have run on the default branch.
+Default-branch-only workflows land here as files and are verified after merge.
+Everything below needs a human; the agent cannot finish it.
+
+### Secrets (set in the host or Kody; do not paste values into chat)
+
+- [ ] <name>: where
+      `<Settings → Secrets and variables → Actions | Kody secrets>` why
+      `<which workflow or automation reads it>`
+
+### GitHub App / bot installs
+
+- [ ] <app name>: install on `<org/repo>` so `<reviewer / check name>` appears
+      on PRs
+
+### Access grants
+
+- [ ] <who needs what>: `<org settings / environment / package / Kody connect>`
+      why `<ship loop, deploy, or cron agent>`
+
+### Host or org settings the agent cannot change
+
+- [ ] <setting>: where `<URL or UI path>` why `<blocked without it>`
+
+### External services
+
+- [ ] <service>: where `<console URL>` why
+      `<previews, errors → issues, backups>`
+```
+
+Known categories the skill always considers: secrets, GitHub App/bot installs,
+access grants, host/org settings outside the agent's credentials, and external
+services (preview/hosting, error tracker, backup target, flags/metrics).
 
 ## AGENTS.md (map, keep it short)
 
@@ -111,7 +163,7 @@ test expectation changed. Say what you could not verify.>
 ## System recap
 
 Risk: <low | medium | high> Touches: <primitive or area> (<composes | extends |
-adds>) <Optional: mermaid diagram or 3–5 bullets of the change flow.>
+adds>) <Optional: mermaid diagram or 3-5 bullets of the change flow.>
 ```
 
 `composes` = uses existing pieces as designed (low). `extends` = changes an
@@ -254,8 +306,8 @@ decisions in code and keep the skill thin.
 
 - **Kody:** call the `tick` export of
   [`@kentcdodds/ship-pr`](https://kody.codes/@kentcdodds/ship-pr), act on the
-  step it returns, and tick again. Same Kent defaults as **Kody yes / no** above
-  — fork and reconfigure.
+  step it returns, and tick again. Same Kent defaults as **Kody yes / no**
+  above; fork and reconfigure.
 - **Without Kody (any host):** `npx kcd-skills@latest autopilot ship-pr` (Node
   20+). Gather the PR state with the host's tools and pass it with
   `--input state.json` (or `--input -` for stdin); `--schema` prints the format.

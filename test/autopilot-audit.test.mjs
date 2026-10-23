@@ -205,7 +205,7 @@ test('detect proposes a control CLI when rung 4 has none', (t) => {
 	const result = detect(root)
 	const finding = controlFinding(result)
 	assert.ok(finding)
-	assert.match(finding.text, /Plan a rung 4 PR to build one/)
+	assert.match(finding.text, /Include rung 4 in the setup PR: build one/)
 	assert.match(
 		finding.text,
 		/dev.*request --contains.*browse --record.*health --sha.*preview --pr only for production-like/,
@@ -711,7 +711,7 @@ test('validate enforces plan rules for partial, unknown, done, and order', () =>
 	const errorsFor = (rows) => validate(validAudit({ plan: rows }))
 	assert.ok(
 		errorsFor([plan[0]]).some((e) =>
-			/rung 2 is missing but has no PR row/.test(e),
+			/rung 2 is missing but has no plan row/.test(e),
 		),
 	)
 	assert.ok(
@@ -727,12 +727,14 @@ test('validate enforces plan rules for partial, unknown, done, and order', () =>
 	assert.ok(errorsFor([plan[1], plan[0]]).some((e) => /ladder order/.test(e)))
 	assert.ok(
 		errorsFor([plan[0], plan[0], plan[1]]).some((e) =>
-			/more than one PR/.test(e),
+			/more than one plan row/.test(e),
 		),
 	)
 	assert.ok(
-		errorsFor([{ ...plan[0], effort: 'XL', door: 'maybe', files: [] }, plan[1]])
-			.length >= 3,
+		errorsFor([
+			{ ...plan[0], effort: 'XL', door: 'maybe', files: ['bad'] },
+			plan[1],
+		]).length >= 2,
 	)
 	assert.ok(
 		errorsFor([{ ...plan[0], pillar: 'review' }, plan[1]]).some((e) =>
@@ -743,6 +745,42 @@ test('validate enforces plan rules for partial, unknown, done, and order', () =>
 		validate(
 			validAudit({ prs: [{ rung: 1, url: 'u', status: 'closed' }] }),
 		).some((e) => /prs\[0\]\.status/.test(e)),
+	)
+})
+
+test('validate and plan table allow settings-only rows with empty files', () => {
+	const settingsOnly = [
+		{
+			rung: 1,
+			title: 'Require CI checks on the default branch',
+			files: [],
+			effort: 'S',
+			door: 'two-way',
+		},
+		{
+			rung: 2,
+			title: 'Seed decisions',
+			files: ['docs/decisions/README.md'],
+			effort: 'S',
+			door: 'two-way',
+		},
+	]
+	assert.deepEqual(validate(validAudit({ plan: settingsOnly })), [])
+	const table = planTable(validAudit({ plan: settingsOnly }))
+	assert.match(
+		table,
+		/\| 1 \| P1 \| Require CI checks on the default branch \| \(settings only\) \| S \| two-way \|/,
+	)
+	assert.match(
+		table,
+		/\| 2 \| P1 \| Seed decisions \| docs\/decisions\/README\.md \|/,
+	)
+	assert.ok(
+		validate(
+			validAudit({
+				plan: [{ ...settingsOnly[0], files: null }, settingsOnly[1]],
+			}),
+		).some((e) => /files must be an array/.test(e)),
 	)
 })
 
@@ -758,15 +796,18 @@ test('renderText groups rungs by pillar, shows before → after, and the plan ta
 	assert.match(text, /P3 · Limit blast radius/)
 	assert.match(text, /Keep improving/)
 	assert.match(text, /partial → done/)
-	assert.match(text, /Open questions \(no PR until answered\):\n  - Rung 9/)
 	assert.match(
 		text,
-		/\| Rung \| Pillar \| PR title \| Files \| Effort \| Door \| Needs \|/,
+		/Open questions \(resolve before the setup PR\):\n  - Rung 9/,
+	)
+	assert.match(
+		text,
+		/\| Rung \| Pillar \| Title \| Files \| Effort \| Door \| Needs \|/,
 	)
 	// Rung 1 is done now, so rung 2 has no open needs.
 	assert.match(
 		planTable(after),
-		/\| 2 \| P1 \| Seed decisions \| docs\/decisions\/README\.md \| S \| two-way \| — \|/,
+		/\| 2 \| P1 \| Seed decisions \| docs\/decisions\/README\.md \| S \| two-way \| - \|/,
 	)
 	assert.match(
 		planTable(validAudit({ plan })),

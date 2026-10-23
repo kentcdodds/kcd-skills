@@ -636,23 +636,23 @@ export function detect(root, { verify = [], timeout = 900 } = {}) {
 	const guide = '(references/verification.md)'
 	if (!hasControlCli && !hasControlSkill) {
 		findings.push({
-			text: `No project control CLI or skill found (tools/control-*.ts, bin/control-*, .agents/skills/control-*/SKILL.md). Plan a rung 4 PR to build one that verifies locally: doctor, dev, login, request --contains, execute, browse --record, map --check, health --sha; preview --pr only for production-like checks ${guide}.`,
+			text: `No project control CLI or skill found (tools/control-*.ts, bin/control-*, .agents/skills/control-*/SKILL.md). Include rung 4 in the setup PR: build one that verifies locally: doctor, dev, login, request --contains, execute, browse --record, map --check, health --sha; preview --pr only for production-like checks ${guide}.`,
 			rung: 4,
 		})
 	} else if (!hasControlCli) {
 		findings.push({
-			text: `Control skill found but no project control CLI (tools/control-*.ts, bin/control-*, control-* package script). Plan a rung 4 PR to build the CLI ${guide}.`,
+			text: `Control skill found but no project control CLI (tools/control-*.ts, bin/control-*, control-* package script). Include rung 4 in the setup PR: build the CLI ${guide}.`,
 			rung: 4,
 		})
 	} else if (!hasControlSkill) {
 		findings.push({
-			text: `Control CLI found but no control-<project> skill (.agents/skills/control-*/SKILL.md). Plan a rung 4 PR to add it ${guide}.`,
+			text: `Control CLI found but no control-<project> skill (.agents/skills/control-*/SKILL.md). Include rung 4 in the setup PR: add it ${guide}.`,
 			rung: 4,
 		})
 	}
 	if (!hasFeatureMap) {
 		findings.push({
-			text: `No Feature Map found (feature-catalog.*, feature-map.*, skills/control-*/references/features/). For an app with routes, plan a rung 4 PR to generate one from the framework's route list, with seed-and-reach notes per page and \`map --check\` in CI; projects without routes skip it ${guide}.`,
+			text: `No Feature Map found (feature-catalog.*, feature-map.*, skills/control-*/references/features/). For an app with routes, include rung 4 in the setup PR: generate a Feature Map from the framework's route list, with seed-and-reach notes per page and \`map --check\` in CI; projects without routes skip it ${guide}.`,
 			rung: 4,
 		})
 	}

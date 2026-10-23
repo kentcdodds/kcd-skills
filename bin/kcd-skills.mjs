@@ -57,11 +57,12 @@ export const commands = {
 			},
 		},
 		plan: {
-			summary: 'Add or replace a plan row: plan add <audit.json> <rung> ...',
+			summary:
+				'Add or replace a plan row (all rows → one setup PR): plan add <audit.json> <rung> ...',
 			run: async (args) => {
 				if (args[0] !== 'add' && !args.includes('--help')) {
 					throw new Error(
-						'Usage: kcd-skills autopilot plan add <audit.json> <rung> --title text --file path... --effort S|M|L --door two-way|one-way',
+						'Usage: kcd-skills autopilot plan add <audit.json> <rung> --title text [--file path]... --effort S|M|L --door two-way|one-way',
 					)
 				}
 				return (await script('autopilot', 'audit-edit')).main(

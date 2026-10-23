@@ -7,8 +7,8 @@ import { readFileSync, realpathSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
 // Keep in sync with audit-detect.mjs (a test checks this). `needs` = rungs
-// whose PRs must merge before this rung's PR opens — the merge-order
-// dependency map (policy); keep prose in references/templates.md in sync.
+// whose work this rung depends on (already done, or included in the same
+// setup PR). Keep prose in references/templates.md in sync.
 export const rungs = [
 	{
 		id: 1,
@@ -270,20 +270,22 @@ function validatePlan(audit, err) {
 			return
 		}
 		if (planned.has(row.rung))
-			err(`${where}: rung ${row.rung} has more than one PR (one PR per rung)`)
+			err(
+				`${where}: rung ${row.rung} has more than one plan row (one row per rung)`,
+			)
 		planned.add(row.rung)
 		if (row.rung < previous) err(`${where}: rows must be in ladder order`)
 		previous = row.rung
 		if (!['partial', 'missing'].includes(rung.score)) {
 			err(
-				`${where}: rung ${row.rung} is ${rung.score}; only partial or missing rungs get a PR${rung.score === 'unknown' ? ' (ask or verify first)' : ''}`,
+				`${where}: rung ${row.rung} is ${rung.score}; only partial or missing rungs get a plan row${rung.score === 'unknown' ? ' (ask or verify first)' : ''}`,
 			)
 		}
 		if (row.pillar !== undefined && row.pillar !== rung.pillar)
 			err(`${where}.pillar must be "${rung.pillar}"`)
 		if (!isText(row.title)) err(`${where}.title must be a non-empty string`)
-		if (!isStringArray(row.files) || row.files.length === 0)
-			err(`${where}.files must list at least one path`)
+		if (!Array.isArray(row.files) || !isStringArray(row.files))
+			err(`${where}.files must be an array of paths (empty = settings only)`)
 		if (!efforts.includes(row.effort))
 			err(`${where}.effort must be one of ${efforts.join(', ')}`)
 		if (!doors.includes(row.door))
@@ -292,7 +294,7 @@ function validatePlan(audit, err) {
 	for (const rung of audit.rungs ?? []) {
 		if (['partial', 'missing'].includes(rung?.score) && !planned.has(rung.id)) {
 			err(
-				`plan: rung ${rung.id} is ${rung.score} but has no PR row (or mark it n/a with a reason)`,
+				`plan: rung ${rung.id} is ${rung.score} but has no plan row (or mark it n/a with a reason)`,
 			)
 		}
 	}
@@ -335,10 +337,10 @@ function planRows(audit) {
 			rung: row.rung,
 			pillar: pillars[rung.pillar].split(' · ')[0],
 			title: row.title,
-			files: row.files.join(', '),
+			files: row.files.length ? row.files.join(', ') : '(settings only)',
 			effort: row.effort,
 			door: row.door,
-			needs: needs.length ? needs.join(', ') : '—',
+			needs: needs.length ? needs.join(', ') : '-',
 		}
 	})
 }
@@ -346,7 +348,7 @@ function planRows(audit) {
 const planHeader = [
 	'Rung',
 	'Pillar',
-	'PR title',
+	'Title',
 	'Files',
 	'Effort',
 	'Door',
@@ -446,7 +448,7 @@ export function renderText(audit, before) {
 	if (questions.length)
 		lines.push(
 			'',
-			'Open questions (no PR until answered):',
+			'Open questions (resolve before the setup PR):',
 			...questions.map((q) => `  - ${q}`),
 		)
 	const table = planTable(audit)
@@ -526,7 +528,7 @@ ${sections}
 ${audit.triage ? `<h2>Triage</h2><p>${html(triageLine(audit.triage))}</p>` : ''}
 ${audit.host?.facts?.length ? `<h2>Host facts (${html(audit.host.host)})</h2>${list(audit.host.facts.map((f) => `${f.rung ? `[rung ${f.rung}] ` : ''}${f.text} (${f.evidence})`))}` : ''}
 ${audit.findings?.length ? `<h2>Findings</h2>${list(audit.findings.map((f) => `${f.rung ? `[rung ${f.rung}] ` : ''}${f.text}`))}` : ''}
-${questions.length ? `<h2>Open questions (no PR until answered)</h2>${list(questions)}` : ''}
+${questions.length ? `<h2>Open questions (resolve before the setup PR)</h2>${list(questions)}` : ''}
 ${
 	plan.length
 		? `<h2>Plan</h2><table><thead><tr>${planHeader.map((h) => `<th>${h}</th>`).join('')}</tr></thead><tbody>${plan
