@@ -4,7 +4,7 @@ Kent C. Dodds's personal agent skills from
 [Kody](https://github.com/kody-hq/kody), shared directly from GitHub and as the
 [`kcd-skills`](https://www.npmjs.com/package/kcd-skills) CLI.
 
-Most of these skills are tuned to Kent's tools, accounts, and workflows—the
+Most of these skills are tuned to Kent's tools, accounts, and workflows: the
 `ship-pr` skill, for example, posts to Kent's Discord channel through his
 private Kody packages. `autopilot` is the exception: it is generic and
 stack-agnostic.
@@ -86,11 +86,12 @@ commits and publishes to npm with trusted publishing.
 - `autopilot` is a one-off: run `npx kcd-skills@latest autopilot`. It audits any
   repository on any code host against three pillars (good PRs, review and
   verification, limited blast radius) with the CLI's `audit`, `score`, and
-  `report` commands, then sets it up so agents ship changes safely: agent
-  instructions, decisions, a PR template with a system recap, a deterministic
-  ship-PR loop, friction reports, and a maturity ladder. Unlike the other
-  skills, it is generic and stack-agnostic. Kody is the recommended default path
-  but optional; without Kody the ship loop runs
+  `report` commands, then opens one setup PR with every planned rung's file
+  changes (workflows, configs, docs) and applies non-file repo settings after
+  that PR merges. Agents get instructions, decisions, a PR template with a
+  system recap, a deterministic ship-PR loop, friction reports, and a maturity
+  ladder. Unlike the other skills, it is generic and stack-agnostic. Kody is the
+  recommended default path but optional; without Kody the ship loop runs
   `npx kcd-skills autopilot ship-pr`.
 
 `orchestrate` lives in

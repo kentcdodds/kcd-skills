@@ -45,13 +45,17 @@ with whatever tools reach the host.
 
 ## Rules
 
-- Start editing once the human approves the plan. One rung per PR, using the
-  repo's own tools and layout.
+- Start editing once the human approves the plan. One setup PR for every planned
+  rung's file changes, using the repo's own tools and layout.
 - Follow the contribution policy; stop if it excludes agent PRs. In community
   repos, add files and keep the existing CI.
 - For libraries, self-hosted, CLI, and mobile projects, "deploy" means
   "release".
 - Keep secrets out of files, issues, and PRs.
+- Tell the human every manual step (secrets, app installs, access grants,
+  settings you cannot apply). Use a concrete checklist: what, where, why. Give
+  it at plan approval and again after the setup PR merges for anything still
+  open.
 
 ## Rungs: done when (audit checklist and ladder)
 
@@ -96,7 +100,7 @@ with whatever tools reach the host.
 11. Triage: every issue agents file (friction, cleanup, errors) gets a priority
     and, when it needs a human call, the project's decision marker. Agents work
     the highest priority first; decision-marked issues wait for the human's
-    call. Default: `P0`–`P3` labels + `needs-decision`; the team's own scheme
+    call. Default: `P0`-`P3` labels + `needs-decision`; the team's own scheme
     (labels, a project-board field, a tracker priority field) from the interview
     takes its place.
 12. Cleanup issues: `Cleanup:` issues with a falsifiable "ready when", triaged
@@ -162,7 +166,7 @@ P3 Deploy/release:               <detected>        version check: <url/command>
 P3 Flags + metrics source:       <detected | none>
 P3 Backups/restore tested:       <detected | unknown>
 KI Issue tracker:                <detected>        labels: friction, friction-skipped
-KI Priority + decisions:         <detected | P0–P3 + needs-decision (default)>  How does the team rank work
+KI Priority + decisions:         <detected | P0-P3 + needs-decision (default)>  How does the team rank work
                                  and flag decisions? (labels, project-board field, tracker priority field, nothing)
 ```
 
@@ -175,46 +179,96 @@ Kody yes/no paths: **Kody yes / no** in
 
 ## 3. Plan
 
-- `missing` or `partial`: one PR that finishes the rung (include findings).
-  `done`: none. `unknown`: ask or verify; if still unknown, open question, no
-  PR.
+- `missing` or `partial`: one plan row that finishes the rung (include
+  findings). All planned rows ship in a single setup PR (see Ladder). `done`:
+  none. `unknown`: ask or verify; if still unknown, open question, no plan row.
 - Rungs keep ladder order whatever the answers. A `none` answer (or default)
   narrows its rung (no previews in 7, no flags in 8); inapplicable rungs are
   `n/a` with `notes` (e.g. a library has no backups).
-- Add one plan row per PR:
+- Add one plan row per partial/missing rung:
   `npx kcd-skills@latest autopilot plan add .autopilot/before.json <rung> --title "<title>" --file <path> --effort S|M|L --door two-way|one-way`
   (repeat `--file`; rows stay in ladder order). Re-run the report; show the
-  **plan table** and open questions; wait for approval.
+  **plan table**, open questions, and the **human checklist** (below); wait for
+  approval.
 
-## 4. Ladder (one PR per rung)
+**Human checklist (plan time):** Before asking for approval, list every step
+only the human can do. For each item: what to do, where (URL, UI path, or
+command the human runs), and why autopilot needs it. Known categories:
+
+1. **Secrets** the agent must not write into the repo (Actions secrets, org
+   secrets, Kody named secrets, deploy tokens). Name each secret and where to
+   set it; never ask the human to paste the value into chat.
+2. **GitHub App / bot installs** (Cursor Bugbot, CodeRabbit, Devin, Seer, or
+   whatever the interview picked for AI review).
+3. **Access grants** (app install on the org/repo, OAuth app approval, deploy
+   environment reviewers, package registry write, Kody connect).
+4. **Host or org settings** the agent cannot change with its credentials (org
+   policy, billing, Actions enabled for the repo, workflow permissions that
+   require an org admin).
+5. **External services** outside the code host (preview/hosting account, error
+   tracker webhook, backup target, flag/metrics vendor).
+
+Skip items the audit already shows as done. Say "none" when there are none. Put
+the same checklist in the setup PR body (templates → **Setup PR body**).
+
+## 4. Ladder (one setup PR)
 
 Adapt the templates: `npx kcd-skills@latest autopilot templates`.
 
-Until rung 6 merges, setup PRs pass verify + human review; after, also run the
-ship loop until `ready-to-merge` or `parked`.
+Open **exactly one** setup pull request. That PR carries every file change for
+every planned rung: workflows, configs, docs, skills, issue forms, label files,
+and so on. Do not open a second PR for leftover files, for `pull_request_target`
+/ `workflow_run` workflows, or for repo settings.
 
-**Prove it:** once rung 4 lands, every PR is proven locally with the control CLI
-before merge: `dev`, then `request --contains` or `execute` (`browse --record`
-for UI). Use `preview --pr` only when the change needs a production-like
-environment; `health --sha` after deploy. **Testing** cites those commands.
+**What goes in the PR:** only tracked files. Adapt templates per rung; follow
+plan-table **Needs** as the order to write and verify content inside that one PR
+(dependency map in `templates`; the `report` plan table shows it).
 
-**Policy — merge-order dependency map:** Open a rung's PR only after its
-plan-table **Needs** merge; others may run in parallel. The map is **Merge-order
-dependency map** in `templates`; the `report` plan table uses it.
+**What stays out of the PR (agent applies after merge):**
 
-**Policy — who merges setup PRs:** The human always merges setup PRs (they
-change the gates). Edit only if that policy changes.
+1. **Repo settings that are not files:** branch protection / rulesets, required
+   status checks, required reviews, and similar host settings. Apply them with
+   the host API (on GitHub: REST/GraphQL via `gh` or the API) right after the
+   setup PR merges. Do not open another PR for them.
+2. **Required checks:** wait until each check you will require has run at least
+   once on the default branch after the merge (the first post-merge workflow
+   run). Then add those check names to protection. Requiring a check that has
+   never run on the default branch fails or no-ops on some hosts.
+3. **Default-branch-only behavior:** workflows that only take effect from the
+   default branch (`pull_request_target`, `workflow_run`, some environment
+   gates) land as files in the setup PR. After merge, verify they ran or are
+   registered as expected. Fix with a normal follow-up change if something is
+   wrong; do not open a second "setup" PR just for that.
+
+**Prove it:** once rung 4's files are in the setup (or already on the default
+branch), every later product PR is proven locally with the control CLI before
+merge: `dev`, then `request --contains` or `execute` (`browse --record` for UI).
+Use `preview --pr` only when the change needs a production-like environment;
+`health --sha` after deploy. **Testing** cites those commands.
+
+**Who merges the setup PR:** the human always merges it (it changes the gates).
+The setup PR itself needs verify + human review. After it merges and rung 6's
+ship loop is on the default branch, later product PRs also run the ship loop
+until `ready-to-merge` or `parked`.
+
+**Human checklist (after merge):** Apply the post-merge API settings above. Then
+re-send the human checklist with only what is still open (secrets still missing,
+apps still uninstalled, access still pending). Mark each item done or still
+needed; leave nothing implied.
 
 ## 5. Hand off
 
-Hand off once every planned PR is merged or open.
+Hand off once the setup PR is merged or open, post-merge settings are applied or
+listed, and the human checklist is current.
 
-1. Copy `.autopilot/before.json` to `.autopilot/after.json`; re-score merged
-   rungs; add `prs` rows:
-   `{ "rung", "url", "status": "merged|open|parked", "note" }`.
+1. Copy `.autopilot/before.json` to `.autopilot/after.json`; re-score rungs the
+   setup covered; add `prs` rows that all point at that one setup PR:
+   `{ "rung", "url", "status": "merged|open|parked", "note" }` (same `url` for
+   every planned rung; use `note` for post-merge or manual leftovers).
 2. Run the verify command and one ship-loop step
    (`npx kcd-skills@latest autopilot ship-pr` or one Kody `tick`) in the target
    repo.
 3. Report
    `npx kcd-skills@latest autopilot report .autopilot/after.json --before .autopilot/before.json --html .autopilot/after.html`,
-   those results, what you couldn't verify, and open decisions.
+   those results, what you couldn't verify, open decisions, and the outstanding
+   human checklist.

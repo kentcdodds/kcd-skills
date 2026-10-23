@@ -57,7 +57,8 @@ export const commands = {
 			},
 		},
 		plan: {
-			summary: 'Add or replace a plan row: plan add <audit.json> <rung> ...',
+			summary:
+				'Add or replace a plan row (all rows → one setup PR): plan add <audit.json> <rung> ...',
 			run: async (args) => {
 				if (args[0] !== 'add' && !args.includes('--help')) {
 					throw new Error(

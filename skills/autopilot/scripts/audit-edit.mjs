@@ -33,12 +33,16 @@ Each fact may include optional rung (1-13), text (what you found), and evidence 
 
 What to look for (skip what the host does not have; say so in a fact):
   1  branch protection or rulesets on the default branch: required checks and reviews
+     (setup applies these via the host API after the one setup PR merges, once those
+     checks have run on the default branch; record what exists today)
   6  who merges recent PRs, and whether they merged with failing or pending checks
   7  reviewers and AI-reviewer checks on recent PRs; release or deploy run history
   10 friction and friction-skipped labels; open friction issues
   11 how open issues are ranked and how decisions are flagged (record with kcd-skills autopilot triage)
   12 open Cleanup: issues and whether each has a "ready when"
-  For each missing file the audit reports in a workflow: when that workflow last succeeded.`
+  For each missing file the audit reports in a workflow: when that workflow last succeeded.
+  Also note human-only gaps (secrets, app installs, access grants, org settings)
+  for the setup checklist.`
 
 // Back-compat alias: older callers may read hostRequest as the full text blob.
 export const hostRequest = `${hostRequestGuide}
@@ -204,7 +208,7 @@ Score one rung, write the audit, and print any problems with that rung (exit 1).
 	finding: `Usage: kcd-skills autopilot finding <audit.json> "text" [--rung N]
 Add a finding, write the audit, and print any problems with that finding (exit 1).`,
 	'plan-add': `Usage: kcd-skills autopilot plan add <audit.json> <rung> --title text --file path... --effort S|M|L --door two-way|one-way
-Add or replace a plan row for a rung, write the audit, and print any problems with that row (exit 1).`,
+Add or replace a plan row for a rung (all rows ship in one setup PR), write the audit, and print any problems with that row (exit 1).`,
 	host: `Usage: kcd-skills autopilot host <audit.json> --input facts.json|-
 Record code-host facts you gathered. --input is JSON (see host request). Writes the audit (exit 1 on bad input).`,
 	'host-request': `Usage: kcd-skills autopilot host request
