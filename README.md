@@ -28,6 +28,7 @@ npx skills add kentcdodds/kcd-skills --skill visual-recap
 npx skills add kentcdodds/kcd-skills --skill ship-pr
 npx skills add kentcdodds/kcd-skills --skill friction-log
 npx skills add kentcdodds/kcd-skills --skill prefer-local-kody-execute
+npx skills add kentcdodds/kcd-skills --skill use-kody
 ```
 
 Add `--global` to make the skills available across projects.
@@ -83,6 +84,9 @@ commits and publishes to npm with trusted publishing.
   form).
 - `prefer-local-kody-execute` prefers `@kodycodes/cli execute --local` over
   hosted MCP `execute` when the agent has shell + Node.
+- `use-kody` tells agents to default to Kody (MCP + CLI) for every task when
+  Kody is connected, bootstrap the CLI via MCP, and only fall back when Kody has
+  nothing.
 - `autopilot` is a one-off: run `npx kcd-skills@latest autopilot`. It audits any
   repository on any code host against three pillars (good PRs, review and
   verification, limited blast radius) with the CLI's `audit`, `score`, and

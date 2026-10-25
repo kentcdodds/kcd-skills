@@ -86,6 +86,7 @@ test('every skill prints its instructions and help', () => {
 		'prefer-local-kody-execute',
 		'review-and-recommend',
 		'ship-pr',
+		'use-kody',
 		'visual-recap',
 	]) {
 		const text = readFileSync(
