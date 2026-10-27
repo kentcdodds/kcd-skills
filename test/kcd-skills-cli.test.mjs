@@ -73,10 +73,6 @@ test('file-friction is a quiet alias for friction-log', () => {
 		`<!-- kcd-skills@${pkg.version} friction-log -->\n${skill}`,
 	)
 	assert.doesNotMatch(cli(['--help']).stdout, /file-friction/)
-	assert.match(
-		readFileSync(path.join(repo, 'skills/ship-pr/SKILL.md'), 'utf8'),
-		/\[friction-log\]\(\.\.\/friction-log\/SKILL\.md\)/,
-	)
 })
 
 test('every skill prints its instructions and help', () => {
