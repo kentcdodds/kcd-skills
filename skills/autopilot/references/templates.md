@@ -190,7 +190,9 @@ Status: accepted | superseded by NNNN Date: YYYY-MM-DD
 
 Index rules: half a page each, only for decisions that span several PRs or that
 an agent would otherwise re-propose, supersede instead of editing history, and
-check numbers for collisions in CI if parallel agents write them.
+check numbers for collisions in CI if parallel agents write them. In the same
+PR, add a new record to the `adrs` list of each primitive it shapes, and swap a
+superseded record's path for its successor.
 
 ## Friction issue form (GitHub example; adapt to your tracker)
 

@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import {
+	checkPrimitivesMapPaths,
 	classifyPaths,
+	isSupersededRecord,
 	parsePrimitivesMap,
 	pathMatchesRoot,
 } from '../skills/visual-recap/scripts/primitives-map.mjs'
@@ -149,4 +154,82 @@ test('isGhPrEditForbidden detects integration updatePullRequest failures', () =>
 	)
 	assert.equal(isGhPrEditForbidden(new Error('updatePullRequest denied')), true)
 	assert.equal(isGhPrEditForbidden(new Error('network timeout')), false)
+})
+
+test('parsePrimitivesMap reads adrs lists and adrs: []', () => {
+	const map = parsePrimitivesMap(`
+version: 1
+groups:
+  - id: auth
+    name: Auth
+primitives:
+  - id: sessions
+    group: auth
+    name: Sessions
+    summary: Sessions.
+    code:
+      - src/sessions/
+    adrs:
+      - docs/decisions/0001-sessions.md
+  - id: tokens
+    group: auth
+    name: Tokens
+    summary: Tokens.
+    code:
+      - src/tokens/
+    adrs: []
+`)
+	assert.deepEqual(map.primitives[0]?.adrs, ['docs/decisions/0001-sessions.md'])
+	assert.deepEqual(map.primitives[1]?.adrs, [])
+})
+
+test('checkPrimitivesMapPaths fails on missing or superseded adrs', () => {
+	const root = mkdtempSync(join(tmpdir(), 'primitives-adrs-'))
+	mkdirSync(join(root, 'src'))
+	mkdirSync(join(root, 'docs/decisions'), { recursive: true })
+	writeFileSync(
+		join(root, 'docs/decisions/0001-current.md'),
+		'# 0001: Current\n\n- **Status:** accepted\n',
+	)
+	writeFileSync(
+		join(root, 'docs/decisions/0002-old.md'),
+		'# 0002: Old\n\n## Status\n\nSuperseded by 0001.\n',
+	)
+	const primitive = (adrs) => ({
+		id: 'p',
+		group: 'g',
+		name: 'P',
+		summary: 'P.',
+		code: ['src/'],
+		docs: [],
+		adrs,
+	})
+	const check = (adrs) =>
+		checkPrimitivesMapPaths(
+			{
+				version: 1,
+				groups: [{ id: 'g', name: 'G' }],
+				primitives: [primitive(adrs)],
+				invariants: [],
+			},
+			root,
+		).map((error) => error.path)
+	assert.deepEqual(check(['docs/decisions/0001-current.md']), [])
+	assert.deepEqual(check([]), [])
+	assert.deepEqual(check(['docs/decisions/0009-missing.md']), [
+		'docs/decisions/0009-missing.md',
+	])
+	assert.deepEqual(check(['docs/decisions/0002-old.md']), [
+		'docs/decisions/0002-old.md',
+	])
+})
+
+test('isSupersededRecord reads inline and section status', () => {
+	assert.equal(isSupersededRecord('- **Status:** accepted'), false)
+	assert.equal(isSupersededRecord('- **Status:** superseded by 0002'), true)
+	assert.equal(
+		isSupersededRecord('- **Status:** accepted; the old gate is superseded'),
+		false,
+	)
+	assert.equal(isSupersededRecord('## Status\n\nSuperseded by 0003.'), true)
 })
