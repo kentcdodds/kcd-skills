@@ -68,7 +68,10 @@ with whatever tools reach the host.
    on real problems.
 2. Decisions directory: ADRs for multi-PR decisions and the "no", each with
    "Revisit if".
-3. Primitives catalog: building blocks and code roots, kept short.
+3. Primitives catalog: building blocks, code roots, and an `adrs` list per entry
+   (current records that shape it, `[]` when none), kept short. A PR that adds
+   or reshapes a primitive, or writes or supersedes an ADR, updates the matching
+   `adrs` lists in the same PR.
 4. Self-verification: agents run their change locally with a project control CLI
    (`doctor`, `dev`, `login`, `request --contains`, `execute`, `browse`,
    `health --sha`) and a `control-<project>` skill. For apps with routes, a

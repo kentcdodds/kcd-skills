@@ -37,6 +37,12 @@ primitive (new `id`, renamed meaning, or ownership roots that must change). Do
 not edit `summary` for ordinary feature work. Call out a touched invariant from
 that map at every risk.
 
+Keep each entry's `adrs` in sync: list the current decision records that shape
+the primitive (`adrs: []` if none), and when this PR adds or supersedes a
+record, add it to (or swap it into) the matching entries. The classifier prints
+each touched primitive's `adrs`; read them before you change that primitive. The
+check script fails on missing or superseded paths.
+
 Plan mode uses `**Mode:** plan` before a PR exists. Recap mode replaces that
 block from `git diff <base>...HEAD`. In plan mode, say explicitly when the plan
 requires **no** change to any primitive; that is the lowest-risk outcome.
