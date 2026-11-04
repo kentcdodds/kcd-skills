@@ -16,4 +16,4 @@ description: >
 3. Make a **recommendation**.
 4. Call out the **right fix**. If it differs from the recommendation, explain
    why.
-5. Stop and wait for a choice — do not implement yet.
+5. Stop and wait for a choice; do not implement yet.
