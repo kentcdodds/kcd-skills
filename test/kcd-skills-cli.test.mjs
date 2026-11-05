@@ -481,3 +481,32 @@ test('the package ships the bin and every skill file, not the tests', () => {
 	assert.equal(pkg.bin['kcd-skills'], 'bin/kcd-skills.mjs')
 	assert.equal(pkg.private, undefined)
 })
+
+test('every autopilot command a skill points to runs (pointers are not dead)', () => {
+	const skill = readFileSync(
+		path.join(repo, 'skills/autopilot/SKILL.md'),
+		'utf8',
+	)
+	const named = new Set(
+		[...skill.matchAll(/kcd-skills@latest autopilot ([a-z-]+)/g)].map(
+			(match) => match[1],
+		),
+	)
+	assert.ok(named.has('setup-pr'))
+	for (const command of named) {
+		const result = cli(['autopilot', command, '--help'])
+		assert.equal(
+			result.status,
+			0,
+			`SKILL.md points to \`autopilot ${command}\`, which does not run. Add references/${command}.md or the command. ${result.stderr}`,
+		)
+	}
+	const setup = cli(['autopilot', 'setup-pr']).stdout
+	for (const heading of [
+		'## Human checklist (plan time)',
+		'**What stays out of the PR',
+		'**Human checklist (after merge):**',
+	]) {
+		assert.ok(setup.includes(heading), `setup-pr is missing ${heading}`)
+	}
+})
