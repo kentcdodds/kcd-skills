@@ -258,13 +258,18 @@ and the friction form.
 [secrets](https://kody.codes/docs/secrets.md) agents use by name,
 [jobs](https://kody.codes/docs/triggers.md) for cron agents):
 
-Fork [`@kody/kody-factory`](https://kody.codes/@kody/kody-factory) into the
-human's org. The factory is the home for this repo's agent work: signals, plans,
-the board, ship-pr, friction, and cleanup. After the setup PR is approved, do
-this (the human approves credentials, webhook destinations, and any job that
-starts an agent):
+`@kody/kody-factory` is private for now. Only people with access can open or
+fork it. Until it is public, treat this as Kent's working setup, not a template
+everyone can fork.
 
-1. Fork `@kody/kody-factory`. It has no `kody:@kentcdodds/*` imports. Map
+If the human has factory access: use
+[`@kody/kody-factory`](https://kody.codes/@kody/kody-factory) as the home for
+this repo's agent work (signals, plans, the board, ship-pr, friction, cleanup).
+After the setup PR is approved, do this (the human approves credentials, webhook
+destinations, and any job that starts an agent):
+
+1. Use `@kody/kody-factory` (or fork it into the human's org once it is
+   public). It has no `kody:@kentcdodds/*` imports. Map
    `runner` (the coding agent) and, if used, `model` and `github` through Kody
    Connect. Never paste secret values into chat.
 2. Add this repository as a project (`upsert-project` or the app's project
@@ -282,9 +287,9 @@ starts an agent):
    stall timers are visible, and the human knows where live agents and runs
    appear. Keep shadow mode on until they flip it.
 
-The `ship-pr` and `friction-log` skills call the factory, not
-`@kentcdodds/ship-pr` or `@kentcdodds/friction-log`. Those personal packages
-stay as Kent's working setup until nothing uses them.
+The `ship-pr` and `friction-log` skills will call the factory once the
+kody-hq/kody skill-pointer PR is merged. Until then, they use
+`@kentcdodds/ship-pr` and `@kentcdodds/friction-log`. Both paths work.
 
 **Kody no:** `npx kcd-skills@latest autopilot ship-pr` (or add `kcd-skills` as a
 dev dependency to pin the version), a ship-pr config from the interview form,
@@ -311,12 +316,12 @@ auto-merge, only with green CI, and within the **Agent may merge** answer.
 Medium still needs its AI reviewer (+ rung 4 proof). High risk, red or pending
 CI, and anything in **Always human** park for the human.
 
-**Kody yes:** these automations are factory jobs and batch rules on your fork of
-`@kody/kody-factory`, imported with the template, then enabled per project. They
-start disabled with no repos until the human lists repos and turns on the ones
-they want. Cards they create live on the same board as everything else, with the
-same stall timers and ship-pr path. Do not also fork
-`@kentcdodds/codebase-cleanup` or `@kentcdodds/friction-log` for a new setup.
+**Kody yes (requires factory access):** these automations are factory jobs and
+batch rules on `@kody/kody-factory`, imported with the template, then enabled
+per project. They start disabled with no repos until the human lists repos and
+turns on the ones they want. Cards they create live on the same board as
+everything else, with the same stall timers and ship-pr path. The factory is
+private for now; only people with access can use this path.
 
 **Kody no:** one scheduled CI workflow per automation (`schedule:` cron, or a
 scheduled pipeline) that launches your coding agent with the same prompt and
@@ -330,11 +335,11 @@ so the audit finds them.
 Prose loops wander: each agent re-reads and re-interprets them. Put the
 decisions in code and keep the skill thin.
 
-- **Kody:** call the factory's `ship-pr/tick` export on the card for this PR,
-  act on the step it returns, and tick again. The card stays on the board so
-  anyone can see where the PR is and whether it has been in review too long.
-  Fork `@kody/kody-factory` and import a template, as in **Kody yes / no**
-  above.
+- **Kody (requires factory access):** call the factory's `ship-pr/tick` export
+  on the card for this PR, act on the step it returns, and tick again. The card
+  stays on the board so anyone can see where the PR is and whether it has been
+  in review too long. The factory is private for now; use it only when the
+  human has access.
 - **Without Kody (any host):** `npx kcd-skills@latest autopilot ship-pr` (Node
   20+). Gather the PR state with the host's tools and pass it with
   `--input state.json` (or `--input -` for stdin); `--schema` prints the format.

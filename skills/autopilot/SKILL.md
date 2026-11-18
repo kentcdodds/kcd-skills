@@ -82,9 +82,9 @@ with whatever tools reach the host.
 
 **P2 Review and verification**
 
-6. Ship loop: the factory board and the `@kody/kody-factory` ship-pr tick (or
-   `kcd-skills autopilot ship-pr` + config when the human said no to Kody),
-   behind a thin `ship-pr` skill.
+6. Ship loop: `@kody/kody-factory` ship-pr tick when the human has factory
+   access (the factory is private for now), or `kcd-skills autopilot ship-pr`
+   + config otherwise, behind a thin `ship-pr` skill.
 7. Reviewers + previews: AI reviewers per tier scrutinize test-expectation
    changes made with the code they test; previews for production-like changes;
    agent merge; running-version check after deploy. Reviewers check each PR
@@ -160,7 +160,7 @@ repo.
 Fill defaults from the audit; ask `____ (human)` fields and any blank/unknown.
 
 ```text
-Use Kody (https://kody.codes)?   yes (default) | no  (yes: fork @kody/kody-factory, add this repo as a project, import a template, use the factory board as home for work and plans)
+Use Kody (https://kody.codes)?   yes (default) | no  (yes: use @kody/kody-factory if you have access -- it is private for now -- add this repo as a project, import a template, use the factory board as home for work and plans)
 P1 Things agents must not do:    ____ (human) 3-5; lens: irreversible, expensive, or user-facing
 P2 Agent may merge:              low risk (default) | low+medium | none
 P2 Risk tiers:                   low = CI green; medium = +AI reviewer +rung 4 proof; high = +human
