@@ -82,8 +82,9 @@ with whatever tools reach the host.
 
 **P2 Review and verification**
 
-6. Ship loop: Kody `ship-pr` or `kcd-skills autopilot ship-pr` + config, behind
-   a thin `ship-pr` skill.
+6. Ship loop: `@kody/kody-factory` ship-pr tick when the human has factory
+   access (the factory is private for now), or `kcd-skills autopilot ship-pr`
+   - config otherwise, behind a thin `ship-pr` skill.
 7. Reviewers + previews: AI reviewers per tier scrutinize test-expectation
    changes made with the code they test; previews for production-like changes;
    agent merge; running-version check after deploy. Reviewers check each PR
@@ -98,18 +99,20 @@ with whatever tools reach the host.
 
 **KI Keep improving**
 
-10. Friction form: issue form + `friction`, `friction-skipped` labels, filed by
-    every ship loop and triaged (rung 11).
-11. Triage: every issue agents file (friction, cleanup, errors) gets a priority
-    and, when it needs a human call, the project's decision marker. Agents work
-    the highest priority first; decision-marked issues wait for the human's
-    call. Default: `P0`-`P3` labels + `needs-decision`; the team's own scheme
-    (labels, a project-board field, a tracker priority field) from the interview
-    takes its place.
-12. Cleanup issues: `Cleanup:` issues with a falsifiable "ready when", triaged
-    (rung 11).
-13. Cleanup cron agents (daily friction sweep, errors → issues, docs freshness
-    and pruning, test pruning, weekly legacy reaper) open PRs, highest priority
+10. Friction source: agents file durable papercuts into the factory (category
+    friction) with a priority and, when needed, the decision marker. A GitHub
+    friction form is optional, for outside contributors. Without Kody: issue
+    form + `friction`, `friction-skipped` labels, filed by every ship loop.
+11. Triage: every card or issue agents file (friction, cleanup, errors) gets a
+    priority and, when it needs a human call, the project's decision marker.
+    Agents work the highest priority first; decision-marked items wait for the
+    human's call. Default: `P0`-`P3` + `needs-decision`, shown as filters on the
+    factory board (or labels without Kody); the team's own scheme from the
+    interview takes its place.
+12. Cleanup cards: `Cleanup:` work with a falsifiable "ready when", triaged
+    (rung 11) on the same board (issues without Kody).
+13. Automations (daily friction batch, errors → cards, docs freshness and
+    pruning, test pruning, weekly legacy reaper) open PRs, highest priority
     first (rung 11); only low/medium risk with green CI auto-merges. See
     templates → **Cleanup automations**.
 
@@ -157,7 +160,7 @@ repo.
 Fill defaults from the audit; ask `____ (human)` fields and any blank/unknown.
 
 ```text
-Use Kody (https://kody.codes)?   yes (default) | no
+Use Kody (https://kody.codes)?   yes (default) | no  (yes: use @kody/kody-factory if you have access -- it is private for now -- add this repo as a project, import a template, use the factory board as home for work and plans)
 P1 Things agents must not do:    ____ (human) 3-5; lens: irreversible, expensive, or user-facing
 P2 Agent may merge:              low risk (default) | low+medium | none
 P2 Risk tiers:                   low = CI green; medium = +AI reviewer +rung 4 proof; high = +human
@@ -235,8 +238,9 @@ the human checklist is current.
    for every planned rung; use `note` for post-merge or manual leftovers). For
    settings-only hand-off with no PR, skip `prs` or note that in `note`.
 2. Run the verify command and one ship-loop step
-   (`npx kcd-skills@latest autopilot ship-pr` or one Kody `tick`) in the target
-   repo.
+   (`npx kcd-skills@latest autopilot ship-pr`, or one factory ship-pr tick on a
+   card) in the target repo. With Kody, open the factory board and confirm the
+   repo's project is there.
 3. Report
    `npx kcd-skills@latest autopilot report .autopilot/after.json --before .autopilot/before.json --html .autopilot/after.html`,
    those results, what you couldn't verify, open decisions, and the outstanding

@@ -132,8 +132,11 @@ This file is a map. Open the page that owns the task:
 - Contributing and setup: <link>
 - Architecture and primitives: <link>
 - Decisions (read before proposing big changes): <link>
-- Shipping a PR: <link to ship-pr skill>
-- Filing friction: <link to friction-log skill>
+- Factory board (Kody): <link to this project's factory board, filtered to this
+  repo>
+- Shipping a PR: <link to ship-pr skill, which ticks the factory with Kody>
+- Filing friction: <link to friction-log skill, which files a factory card with
+  Kody>
 ```
 
 Link the pages and skills agents use for each task.
@@ -254,11 +257,39 @@ and the friction form.
 **Kody yes** ([connect](https://kody.codes/docs/connect-your-agent.md);
 [secrets](https://kody.codes/docs/secrets.md) agents use by name,
 [jobs](https://kody.codes/docs/triggers.md) for cron agents):
-[`@kentcdodds/ship-pr`](https://kody.codes/@kentcdodds/ship-pr) (`tick`) and
-[`@kentcdodds/friction-log`](https://kody.codes/@kentcdodds/friction-log) are
-**Kent's defaults** (Bugbot/CodeRabbit/Devin/Seer review sort, Discord summary,
-daily [`kody-hq/kody`](https://github.com/kody-hq/kody) sweep): a template to
-fork and reconfigure for your stack.
+
+`@kody/kody-factory` is private for now. Only people with access can open or
+fork it. Until it is public, treat this as Kent's working setup, not a template
+everyone can fork.
+
+If the human has factory access: use
+[`@kody/kody-factory`](https://kody.codes/@kody/kody-factory) as the home for
+this repo's agent work (signals, plans, the board, ship-pr, friction, cleanup).
+After the setup PR is approved, do this (the human approves credentials, webhook
+destinations, and any job that starts an agent):
+
+1. Use `@kody/kody-factory` (or fork it into the human's org once it is public).
+   It has no `kody:@kentcdodds/*` imports. Map `runner` (the coding agent) and,
+   if used, `model` and `github` through Kody Connect. Never paste secret values
+   into chat.
+2. Add this repository as a project (`upsert-project` or the app's project
+   form): a project id, the `owner/name` repo, and the agent runner.
+3. Import a template with the factory's config import. Start from "Basic OSS
+   repo", or "Kody setup" when the human wants the full defaults. A template is
+   data (sources, routing questions, destination prompt templates, board column
+   time limits, batch rules). It does not start jobs by itself; new jobs ship
+   disabled.
+4. Register signal sources in the app or through the `signals/sources` export
+   (GitHub issues, Sentry, Discord, feedback, friction, CI, or a generic JSON
+   body). Each source gets a signing key the human pastes into that service.
+   Agents can create and edit sources. Nothing is hard-coded per source.
+5. Open the factory board and the project page. Confirm the project shows up,
+   stall timers are visible, and the human knows where live agents and runs
+   appear. Keep shadow mode on until they flip it.
+
+The `ship-pr` and `friction-log` skills will call the factory once the
+kody-hq/kody skill-pointer PR is merged. Until then, they use
+`@kentcdodds/ship-pr` and `@kentcdodds/friction-log`. Both paths work.
 
 **Kody no:** `npx kcd-skills@latest autopilot ship-pr` (or add `kcd-skills` as a
 dev dependency to pin the version), a ship-pr config from the interview form,
@@ -285,14 +316,12 @@ auto-merge, only with green CI, and within the **Agent may merge** answer.
 Medium still needs its AI reviewer (+ rung 4 proof). High risk, red or pending
 CI, and anything in **Always human** park for the human.
 
-**Kody yes:** fork
-[`@kentcdodds/codebase-cleanup`](https://kody.codes/@kentcdodds/codebase-cleanup)
-(legacy reaper, docs freshness, keep-tests-tight, prod CI failure → fix agent)
-and [`@kentcdodds/friction-log`](https://kody.codes/@kentcdodds/friction-log)
-(daily friction sweep). They are **Kent's defaults**: every automation starts
-disabled with no repos, so you list repos and a notify target, then enable the
-ones you want. The package is hidden from Kody search; this link is how you find
-it. A template to fork and adapt.
+**Kody yes (requires factory access):** these automations are factory jobs and
+batch rules on `@kody/kody-factory`, imported with the template, then enabled
+per project. They start disabled with no repos until the human lists repos and
+turns on the ones they want. Cards they create live on the same board as
+everything else, with the same stall timers and ship-pr path. The factory is
+private for now; only people with access can use this path.
 
 **Kody no:** one scheduled CI workflow per automation (`schedule:` cron, or a
 scheduled pipeline) that launches your coding agent with the same prompt and
@@ -306,10 +335,11 @@ so the audit finds them.
 Prose loops wander: each agent re-reads and re-interprets them. Put the
 decisions in code and keep the skill thin.
 
-- **Kody:** call the `tick` export of
-  [`@kentcdodds/ship-pr`](https://kody.codes/@kentcdodds/ship-pr), act on the
-  step it returns, and tick again. Same Kent defaults as **Kody yes / no**
-  above; fork and reconfigure.
+- **Kody (requires factory access):** call the factory's `ship-pr/tick` export
+  on the card for this PR, act on the step it returns, and tick again. The card
+  stays on the board so anyone can see where the PR is and whether it has been
+  in review too long. The factory is private for now; use it only when the human
+  has access.
 - **Without Kody (any host):** `npx kcd-skills@latest autopilot ship-pr` (Node
   20+). Gather the PR state with the host's tools and pass it with
   `--input state.json` (or `--input -` for stdin); `--schema` prints the format.
