@@ -268,10 +268,10 @@ this repo's agent work (signals, plans, the board, ship-pr, friction, cleanup).
 After the setup PR is approved, do this (the human approves credentials, webhook
 destinations, and any job that starts an agent):
 
-1. Use `@kody/kody-factory` (or fork it into the human's org once it is
-   public). It has no `kody:@kentcdodds/*` imports. Map
-   `runner` (the coding agent) and, if used, `model` and `github` through Kody
-   Connect. Never paste secret values into chat.
+1. Use `@kody/kody-factory` (or fork it into the human's org once it is public).
+   It has no `kody:@kentcdodds/*` imports. Map `runner` (the coding agent) and,
+   if used, `model` and `github` through Kody Connect. Never paste secret values
+   into chat.
 2. Add this repository as a project (`upsert-project` or the app's project
    form): a project id, the `owner/name` repo, and the agent runner.
 3. Import a template with the factory's config import. Start from "Basic OSS
@@ -338,8 +338,8 @@ decisions in code and keep the skill thin.
 - **Kody (requires factory access):** call the factory's `ship-pr/tick` export
   on the card for this PR, act on the step it returns, and tick again. The card
   stays on the board so anyone can see where the PR is and whether it has been
-  in review too long. The factory is private for now; use it only when the
-  human has access.
+  in review too long. The factory is private for now; use it only when the human
+  has access.
 - **Without Kody (any host):** `npx kcd-skills@latest autopilot ship-pr` (Node
   20+). Gather the PR state with the host's tools and pass it with
   `--input state.json` (or `--input -` for stdin); `--schema` prints the format.

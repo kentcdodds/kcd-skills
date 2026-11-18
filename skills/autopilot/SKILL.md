@@ -84,7 +84,7 @@ with whatever tools reach the host.
 
 6. Ship loop: `@kody/kody-factory` ship-pr tick when the human has factory
    access (the factory is private for now), or `kcd-skills autopilot ship-pr`
-   + config otherwise, behind a thin `ship-pr` skill.
+   - config otherwise, behind a thin `ship-pr` skill.
 7. Reviewers + previews: AI reviewers per tier scrutinize test-expectation
    changes made with the code they test; previews for production-like changes;
    agent merge; running-version check after deploy. Reviewers check each PR
