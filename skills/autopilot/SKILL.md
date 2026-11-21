@@ -71,7 +71,10 @@ with whatever tools reach the host.
 3. Primitives catalog: building blocks, code roots, and an `adrs` list per entry
    (current records that shape it, `[]` when none), kept short. A PR that adds
    or reshapes a primitive, or writes or supersedes an ADR, updates the matching
-   `adrs` lists in the same PR.
+   `adrs` lists in the same PR. Agents open the catalog (linked from
+   `AGENTS.md`) before a task that adds or changes code, reuse an existing
+   primitive instead of adding one that does the same job, and read a
+   primitive's `adrs` before changing it.
 4. Self-verification: agents run their change locally with a project control CLI
    (`doctor`, `dev`, `login`, `request --contains`, `execute`, `browse`,
    `health --sha`) and a `control-<project>` skill. For apps with routes, a

@@ -16,6 +16,7 @@ import {
 	extractCiSteps,
 	formatCarryOver,
 	formatVerifyLine,
+	linksTo,
 	main as auditMain,
 	mergePrevious,
 	migrateRungIds,
@@ -253,6 +254,57 @@ test('detect recognizes rung 13 cleanup automations', (t) => {
 	const report = reportRungs.find((r) => r.id === 13)
 	assert.equal(report.name, rung13.name)
 	assert.deepEqual(report.needs, [10, 11, 12])
+})
+
+const catalogFinding = (result) =>
+	result.findings.find((f) => f.check === 'primitives-catalog-link')
+
+test('rung 3 needs AGENTS.md to link the primitives catalog', (t) => {
+	const catalog = 'docs/contributing/architecture/primitives.yaml'
+	const unlinked = detect(
+		tempRepo(t, {
+			'AGENTS.md': '# app\n\n- Contributing: [docs](./docs/README.md)\n',
+			[catalog]: 'primitives: []\n',
+		}),
+	)
+	const rung3 = unlinked.rungs.find((r) => r.id === 3)
+	assert.ok(rung3.evidence.includes(catalog))
+	const finding = catalogFinding(unlinked)
+	assert.equal(finding.rung, 3)
+	assert.match(finding.text, /No agent instructions file links/)
+	assert.match(finding.text, /AGENTS\.md/)
+
+	const audit = withRung(3, { score: 'done', evidence: [catalog] })
+	audit.findings = unlinked.findings
+	assert.ok(validate(audit).some((e) => /rung 3 is done but no agent/.test(e)))
+
+	const linked = detect(
+		tempRepo(t, {
+			'AGENTS.md': `# app\n\n- Primitives catalog (read before adding or changing a building block; reuse what exists, read its adrs first): [primitives](./${catalog})\n`,
+			[catalog]: 'primitives: []\n',
+		}),
+	)
+	assert.equal(catalogFinding(linked), undefined)
+	assert.ok(
+		linked.rungs
+			.find((r) => r.id === 3)
+			.hints.includes(`AGENTS.md links ${catalog}`),
+	)
+	audit.findings = linked.findings
+	assert.deepEqual(validate(audit), [])
+
+	const { result } = mergePrevious(linked, unlinked)
+	assert.equal(catalogFinding(result), undefined)
+})
+
+test('linksTo matches repo-root and file-relative paths', () => {
+	const target = 'docs/primitives.md'
+	assert.ok(linksTo('AGENTS.md', '[p](./docs/primitives.md)', target))
+	assert.ok(linksTo('AGENTS.md', 'Catalog: docs/primitives.md.', target))
+	assert.ok(linksTo('pkg/AGENTS.md', '[p](../docs/primitives.md#x)', target))
+	assert.ok(linksTo('pkg/AGENTS.md', '[p](/docs/primitives.md)', target))
+	assert.ok(!linksTo('AGENTS.md', '[p](./docs/primitives.md.bak)', target))
+	assert.ok(!linksTo('AGENTS.md', '[p](./other/docs/primitives.md)', target))
 })
 
 test('rung 11 triage sits between friction and cleanup issues', (t) => {
