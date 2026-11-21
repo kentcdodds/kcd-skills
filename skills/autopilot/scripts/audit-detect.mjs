@@ -82,8 +82,8 @@ const pathRules = {
 	],
 	3: [
 		[
-			'primitives or architecture doc (*primitive*, *architecture*, *catalog*)',
-			/(^|\/)[^/]*(primitive|architecture|building-blocks|catalog)[^/]*\.mdx?$/i,
+			'primitives or architecture doc (*primitive*, *architecture*, *catalog*, primitives.yaml)',
+			/(^|\/)[^/]*(primitive|architecture|building-blocks|catalog)[^/]*\.mdx?$|(^|\/)[^/]*(primitive|building-blocks)[^/]*\.(ya?ml|json)$/i,
 		],
 	],
 	4: [
@@ -427,6 +427,21 @@ export function runVerify(root, command, timeoutSec = 900) {
 	}
 }
 
+export const catalogLinkCheck = 'primitives-catalog-link'
+
+// True when `text` (from repo file `from`) references repo file `target` by a
+// repo-root or file-relative path.
+export function linksTo(from, text, target) {
+	const relative = path.posix.relative(path.posix.dirname(from), target)
+	const escape = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+	return [target, `/${target}`, relative, `./${relative}`].some((ref) =>
+		new RegExp(
+			`(^|[\\s(<'"\`\\[:])${escape(ref)}($|[\\s)>'"\`#?,;:\\]]|\\.(\\s|$))`,
+			'm',
+		).test(text),
+	)
+}
+
 export function detect(root, { verify = [], timeout = 900 } = {}) {
 	root = path.resolve(root)
 	const files = listFiles(root)
@@ -665,6 +680,33 @@ export function detect(root, { verify = [], timeout = 900 } = {}) {
 			hints[4].push(
 				`script \`${name}\` runs in neither CI nor the verify command`,
 			)
+		}
+	}
+
+	// Rung 3: agents find the catalog through the agent instructions file.
+	const agentFiles = [...evidence[1]].filter((file) =>
+		pathRules[1][0][1].test(file),
+	)
+	const catalogs = [...evidence[3]].filter(
+		(file) => !pathRules[2][0][1].test(file),
+	)
+	checked[3].push(
+		'agent instructions (AGENTS.md or equivalent) link the catalog',
+	)
+	if (catalogs.length) {
+		const links = agentFiles.flatMap((from) => {
+			const text = read(root, from)
+			return catalogs
+				.filter((catalog) => linksTo(from, text, catalog))
+				.map((catalog) => `${from} links ${catalog}`)
+		})
+		hints[3].push(...links)
+		if (!links.length) {
+			findings.push({
+				text: `No agent instructions file links the primitives catalog (${catalogs.join(', ')}; looked in ${agentFiles.join(', ') || 'AGENTS.md, CLAUDE.md, .cursor/rules, copilot-instructions.md: none found'}). Rung 3 is done once AGENTS.md links it, e.g. "- Primitives catalog (read before adding or changing a building block; reuse what exists, read its adrs first): <link>" (references/templates.md).`,
+				rung: 3,
+				check: catalogLinkCheck,
+			})
 		}
 	}
 
@@ -910,8 +952,10 @@ export function mergePrevious(next, previous) {
 			`text:${n.text ?? ''}`,
 		]),
 	)
+	// Findings with a `check` are re-detected every run, so drop old ones.
 	const previousFindings = (previous.findings ?? []).filter(
 		(finding) =>
+			!finding?.check &&
 			!nextKeys.has(findingKey(finding)) &&
 			!nextKeys.has(`text:${finding.text ?? ''}`),
 	)

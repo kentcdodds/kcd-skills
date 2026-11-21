@@ -238,6 +238,14 @@ export function validate(audit) {
 	}
 	for (const r of rungs)
 		if (!seen.has(r.id)) err(`rung ${r.id} (${r.name}) is missing`)
+	const unlinked = Array.isArray(audit.findings)
+		? audit.findings.find((f) => f?.check === 'primitives-catalog-link')
+		: undefined
+	if (unlinked && audit.rungs.find((r) => r?.id === 3)?.score === 'done') {
+		err(
+			'rung 3 is done but no agent instructions file links the primitives catalog: link it from AGENTS.md, or score rung 3 partial',
+		)
+	}
 	if (audit.plan !== undefined) validatePlan(audit, err)
 	if (audit.prs !== undefined) {
 		if (!Array.isArray(audit.prs)) err('prs must be an array')

@@ -130,7 +130,8 @@ and pre-push hooks run lint, format, typecheck, and dead-code checks.
 This file is a map. Open the page that owns the task:
 
 - Contributing and setup: <link>
-- Architecture and primitives: <link>
+- Primitives catalog (read before adding or changing a building block; reuse
+  what exists, read its adrs first): <link>
 - Decisions (read before proposing big changes): <link>
 - Factory board (Kody): <link to this project's factory board, filtered to this
   repo>
